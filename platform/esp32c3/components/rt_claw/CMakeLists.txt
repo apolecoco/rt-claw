@@ -27,6 +27,7 @@ idf_component_register(
         json
         esp_driver_gpio
         esp_timer
+        esp_lcd
 )
 
 target_compile_definitions(${COMPONENT_LIB} PUBLIC CLAW_PLATFORM_ESP_IDF)

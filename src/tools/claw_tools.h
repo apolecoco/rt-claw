@@ -81,4 +81,15 @@ void claw_tools_register_gpio(void);
  */
 void claw_tools_register_system(void);
 
+/**
+ * Register built-in LCD tools.
+ */
+void claw_tools_register_lcd(void);
+
+/**
+ * Initialize LCD panel (QEMU RGB framebuffer).
+ * Call before claw_tools_init() so the panel is ready.
+ */
+int claw_lcd_init(void);
+
 #endif /* __CLAW_TOOLS_H__ */

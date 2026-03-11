@@ -24,6 +24,7 @@ int claw_init(void)
     gateway_init();
     swarm_init();
     net_service_init();
+    claw_lcd_init();
     claw_tools_init();
     ai_engine_init();
 
