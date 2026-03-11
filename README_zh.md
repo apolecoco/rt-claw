@@ -1,4 +1,4 @@
-# RT-Claw — 让物理 AI 助手触手可及
+# RT-Claw — 让 AI 助手触手可及
 
 **中文** | [English](README.md)
 
