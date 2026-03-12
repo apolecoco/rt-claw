@@ -7,10 +7,12 @@
 #include "claw_config.h"
 #include "claw_init.h"
 #include "gateway.h"
+#include "scheduler.h"
 #include "swarm.h"
 #include "net_service.h"
 #include "claw_tools.h"
 #include "ai_engine.h"
+#include "ai_skill.h"
 
 int claw_init(void)
 {
@@ -22,11 +24,14 @@ int claw_init(void)
     claw_log_raw("\n");
 
     gateway_init();
+    sched_init();
     swarm_init();
     net_service_init();
+    swarm_start();
     claw_lcd_init();
     claw_tools_init();
     ai_engine_init();
+    ai_skill_init();
 
     return CLAW_OK;
 }

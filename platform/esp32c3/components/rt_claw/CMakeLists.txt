@@ -28,6 +28,8 @@ idf_component_register(
         esp_driver_gpio
         esp_timer
         esp_lcd
+        lwip
+        nvs_flash
 )
 
 target_compile_definitions(${COMPONENT_LIB} PUBLIC CLAW_PLATFORM_ESP_IDF)

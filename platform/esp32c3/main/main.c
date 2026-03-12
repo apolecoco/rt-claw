@@ -3,22 +3,29 @@
  * SPDX-License-Identifier: MIT
  *
  * Platform entry for ESP32-C3 / ESP-IDF + FreeRTOS.
+ * Chat-first shell: direct input goes to AI, /commands for system.
  */
 
 #include "claw_os.h"
 #include "claw_init.h"
 #include "ai_engine.h"
+#include "ai_memory.h"
+#include "ai_skill.h"
+#include "scheduler.h"
+#include "swarm.h"
 
 #include <stdio.h>
 #include <string.h>
 
 #ifdef CLAW_PLATFORM_ESP_IDF
-#include "esp_console.h"
 #include "driver/uart.h"
+#include "nvs_flash.h"
 #endif
 
 #define TAG         "main"
 #define REPLY_SIZE  4096
+#define INPUT_SIZE  256
+#define MAX_ARGS    8
 
 #ifdef CLAW_PLATFORM_ESP_IDF
 
@@ -41,16 +48,17 @@ static int uart_read_line(char *buf, int size)
         }
         if (ch == '\r' || ch == '\n') {
             uart_write_bytes(UART_NUM_0, "\r\n", 2);
+            /* Consume trailing \n after \r (or vice versa) */
+            uint8_t trail;
+            uart_read_bytes(UART_NUM_0, &trail, 1, pdMS_TO_TICKS(20));
             break;
         }
         if (ch == '\b' || ch == 127) {
             if (pos > 0) {
-                /* UTF-8 backspace: remove trailing continuation bytes */
                 pos--;
                 while (pos > 0 && (buf[pos] & 0xC0) == 0x80) {
                     pos--;
                 }
-                /* Erase character on screen */
                 uart_write_bytes(UART_NUM_0, "\b \b", 3);
             }
             continue;
@@ -62,86 +70,240 @@ static int uart_read_line(char *buf, int size)
     return pos;
 }
 
-/* "ask" command — send message to AI */
-static int cmd_ask(int argc, char **argv)
+/* Split string into argv-style tokens (modifies input in place) */
+static int tokenize(char *line, char **argv, int max_args)
 {
-    char msg[256];
+    int argc = 0;
 
-    if (argc < 2) {
-        /* Interactive mode: raw UART read for UTF-8 support */
-        printf("You> ");
-        if (uart_read_line(msg, sizeof(msg)) == 0) {
-            return 0;
+    while (*line && argc < max_args) {
+        while (*line == ' ') {
+            line++;
         }
-    } else {
-        /* Inline mode: concatenate args */
-        int off = 0;
-
-        for (int i = 1; i < argc && off < (int)sizeof(msg) - 1; i++) {
-            if (i > 1) {
-                msg[off++] = ' ';
-            }
-            int n = snprintf(msg + off, sizeof(msg) - off,
-                             "%s", argv[i]);
-            off += n;
+        if (*line == '\0') {
+            break;
+        }
+        argv[argc++] = line;
+        while (*line && *line != ' ') {
+            line++;
+        }
+        if (*line) {
+            *line++ = '\0';
         }
     }
+    return argc;
+}
 
-    if (ai_chat(msg, s_reply, REPLY_SIZE) == CLAW_OK) {
-        printf("\nAssistant> %s\n", s_reply);
+/* ---- Slash command handlers ---- */
+
+static void cmd_help(void)
+{
+    printf("  /help                    Show this help\n");
+    printf("  /history                 Show conversation message count\n");
+    printf("  /clear                   Clear conversation memory\n");
+    printf("  /skill [name] [args]     List or execute a skill\n");
+    printf("  /sched                   List scheduled tasks\n");
+    printf("  /nodes                   Show swarm node table\n");
+    printf("  /remember <key> <val>    Save to long-term memory\n");
+    printf("  /forget <key>            Delete from long-term memory\n");
+    printf("  /memories                List long-term memories\n");
+    printf("\n  Anything else is sent directly to AI.\n");
+}
+
+static void cmd_history(void)
+{
+    printf("Conversation memory: %d messages\n", ai_memory_count());
+}
+
+static void cmd_clear(void)
+{
+    ai_memory_clear();
+    printf("Conversation memory cleared.\n");
+}
+
+static void cmd_sched(void)
+{
+    sched_list();
+}
+
+static void cmd_skill(int argc, char **argv)
+{
+    if (argc < 2) {
+        ai_skill_list();
+        return;
+    }
+
+    char params[256] = "";
+    int off = 0;
+
+    for (int i = 2; i < argc && off < (int)sizeof(params) - 1; i++) {
+        if (i > 2) {
+            params[off++] = ' ';
+        }
+        off += snprintf(params + off, sizeof(params) - off, "%s", argv[i]);
+    }
+
+    if (ai_skill_execute(argv[1], params, s_reply, REPLY_SIZE) == CLAW_OK) {
+        printf("\nSkill [%s]> %s\n", argv[1], s_reply);
     } else {
         printf("\n[error] %s\n", s_reply);
     }
-    return 0;
 }
 
-static void register_commands(void)
+static void cmd_remember(int argc, char **argv)
 {
-    const esp_console_cmd_t ask_cmd = {
-        .command = "ask",
-        .help = "Chat with AI. 'ask' for interactive input, or 'ask <msg>'",
-        .func = &cmd_ask,
-    };
-    esp_console_cmd_register(&ask_cmd);
-    esp_console_register_help_command();
+    if (argc < 3) {
+        printf("Usage: /remember <key> <value...>\n");
+        return;
+    }
+
+    char value[128] = "";
+    int off = 0;
+
+    for (int i = 2; i < argc && off < (int)sizeof(value) - 1; i++) {
+        if (i > 2) {
+            value[off++] = ' ';
+        }
+        off += snprintf(value + off, sizeof(value) - off, "%s", argv[i]);
+    }
+
+    if (ai_ltm_save(argv[1], value) == CLAW_OK) {
+        printf("Remembered: %s = %s\n", argv[1], value);
+    } else {
+        printf("[error] failed to save\n");
+    }
 }
 
-static void console_start(void)
+static void cmd_forget(int argc, char **argv)
 {
+    if (argc < 2) {
+        printf("Usage: /forget <key>\n");
+        return;
+    }
+
+    if (ai_ltm_delete(argv[1]) == CLAW_OK) {
+        printf("Forgot: %s\n", argv[1]);
+    } else {
+        printf("[error] key '%s' not found\n", argv[1]);
+    }
+}
+
+static void cmd_memories(void)
+{
+    ai_ltm_list();
+}
+
+static void cmd_nodes(void)
+{
+    swarm_list_nodes();
+}
+
+/* Dispatch a /command */
+static void dispatch_command(char *line)
+{
+    char *argv[MAX_ARGS];
+    int argc = tokenize(line, argv, MAX_ARGS);
+
+    if (argc == 0) {
+        return;
+    }
+
+    const char *cmd = argv[0];
+
+    if (strcmp(cmd, "/help") == 0) {
+        cmd_help();
+    } else if (strcmp(cmd, "/history") == 0) {
+        cmd_history();
+    } else if (strcmp(cmd, "/clear") == 0) {
+        cmd_clear();
+    } else if (strcmp(cmd, "/sched") == 0) {
+        cmd_sched();
+    } else if (strcmp(cmd, "/skill") == 0) {
+        cmd_skill(argc, argv);
+    } else if (strcmp(cmd, "/remember") == 0) {
+        cmd_remember(argc, argv);
+    } else if (strcmp(cmd, "/forget") == 0) {
+        cmd_forget(argc, argv);
+    } else if (strcmp(cmd, "/memories") == 0) {
+        cmd_memories();
+    } else if (strcmp(cmd, "/nodes") == 0) {
+        cmd_nodes();
+    } else {
+        printf("Unknown command: %s (type /help)\n", cmd);
+    }
+}
+
+/* Chat with AI (direct input) */
+static void do_chat(const char *msg)
+{
+    if (ai_chat(msg, s_reply, REPLY_SIZE) == CLAW_OK) {
+        printf("\nrt-claw> %s\n", s_reply);
+    } else {
+        printf("\n[error] %s\n", s_reply);
+    }
+}
+
+static void shell_loop(void)
+{
+    char input[INPUT_SIZE];
+
+    /* Install UART driver (required for uart_read_bytes) */
+    uart_driver_install(UART_NUM_0, 256, 0, 0, NULL, 0);
+
     s_reply = claw_malloc(REPLY_SIZE);
     if (!s_reply) {
         CLAW_LOGE(TAG, "no memory for reply buffer");
         return;
     }
 
-    esp_console_repl_t *repl = NULL;
-    esp_console_repl_config_t repl_config =
-        ESP_CONSOLE_REPL_CONFIG_DEFAULT();
-    repl_config.prompt = "rt-claw> ";
-    repl_config.task_stack_size = 8192;
-
-    esp_console_dev_uart_config_t uart_config =
-        ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
-
-    esp_console_new_repl_uart(&uart_config, &repl_config, &repl);
-    register_commands();
+    /* Test AI connectivity */
+    printf("\n  [boot] Testing AI connection ...\n");
+    if (ai_chat_raw("Report your status in one short sentence. "
+                     "Include your name, platform, and that you are online.",
+                     s_reply, REPLY_SIZE) == CLAW_OK) {
+        printf("  [boot] AI> %s\n", s_reply);
+    } else {
+        printf("  [boot] AI test failed: %s\n", s_reply);
+    }
 
     printf("\n");
-    printf("  rt-claw shell  (type 'help' for commands)\n");
-    printf("  AI chat:  ask <your message>\n");
+    printf("  rt-claw chat  (type /help for commands)\n");
+    printf("  Direct input sends to AI, /command for system.\n");
     printf("\n");
 
-    esp_console_start_repl(repl);
+    while (1) {
+        printf("\nYou> ");
+        int len = uart_read_line(input, sizeof(input));
+
+        if (len == 0) {
+            continue;
+        }
+
+        if (input[0] == '/') {
+            dispatch_command(input);
+        } else {
+            do_chat(input);
+        }
+    }
 }
 
 #endif /* CLAW_PLATFORM_ESP_IDF */
 
 void app_main(void)
 {
+#ifdef CLAW_PLATFORM_ESP_IDF
+    /* Initialize NVS flash for long-term memory storage */
+    esp_err_t err = nvs_flash_init();
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES ||
+        err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        nvs_flash_erase();
+        nvs_flash_init();
+    }
+#endif
+
     claw_init();
 
 #ifdef CLAW_PLATFORM_ESP_IDF
-    console_start();
+    shell_loop();
 #endif
 
     /* Keep main task alive */
