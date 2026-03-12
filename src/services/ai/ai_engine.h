@@ -8,6 +8,15 @@
 
 #include "claw_os.h"
 
+/* Status phases for the progress callback */
+#define AI_STATUS_THINKING   0  /* waiting for API response */
+#define AI_STATUS_TOOL_CALL  1  /* executing a tool (detail = name) */
+#define AI_STATUS_DONE       2  /* request complete */
+
+typedef void (*ai_status_cb_t)(int status, const char *detail);
+
+void ai_set_status_cb(ai_status_cb_t cb);
+
 int ai_engine_init(void);
 
 /**

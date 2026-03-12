@@ -34,6 +34,19 @@
 #define API_RETRY_BASE_MS  3000
 
 static claw_mutex_t s_api_lock;
+static ai_status_cb_t s_status_cb;
+
+static inline void notify_status(int st, const char *detail)
+{
+    if (s_status_cb) {
+        s_status_cb(st, detail);
+    }
+}
+
+void ai_set_status_cb(ai_status_cb_t cb)
+{
+    s_status_cb = cb;
+}
 
 static const char *SYSTEM_PROMPT =
     "You are rt-claw, an AI assistant running on an ESP32-C3 microcontroller. "
@@ -237,6 +250,7 @@ static cJSON *execute_tool_calls(const cJSON *content)
         const char *tool_id = id ? id->valuestring : "";
 
         CLAW_LOGI(TAG, "tool_use: %s", tool_name);
+        notify_status(AI_STATUS_TOOL_CALL, tool_name);
 
         cJSON *result_obj = cJSON_CreateObject();
         const claw_tool_t *tool = claw_tool_find(tool_name);
@@ -288,6 +302,7 @@ static int ai_chat_with_messages(const char *system_prompt,
 
     claw_lcd_status("Thinking ...");
     claw_lcd_progress(0);
+    notify_status(AI_STATUS_THINKING, NULL);
 
     for (int round = 0; round < MAX_TOOL_ROUNDS; round++) {
         cJSON *req = build_request(system_prompt, messages, tools);
@@ -341,6 +356,7 @@ static int ai_chat_with_messages(const char *system_prompt,
             cJSON_AddItemToArray(messages, result_msg);
 
             cJSON_Delete(resp);
+            notify_status(AI_STATUS_THINKING, NULL);
             continue;
         }
 
@@ -352,6 +368,7 @@ static int ai_chat_with_messages(const char *system_prompt,
         break;
     }
 
+    notify_status(AI_STATUS_DONE, NULL);
     claw_free(resp_buf);
     return ret;
 }
