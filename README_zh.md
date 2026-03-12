@@ -48,7 +48,7 @@ rt-claw 通过低成本嵌入式节点与蜂群组网，让智能从云端走向
 ```
 +---------------------------------------------------+
 |                rt-claw Application                |
-|  gateway | swarm | net | ai_engine | tools | lcd |
+|  gateway | swarm | net | ai_engine | tools | lcd  |
 +---------------------------------------------------+
 |               claw_os.h  (OSAL API)               |
 +-----------------+---------------------------------+
