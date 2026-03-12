@@ -20,6 +20,7 @@
 #ifdef CLAW_PLATFORM_ESP_IDF
 #include "driver/uart.h"
 #include "nvs_flash.h"
+#include "esp_log.h"
 #endif
 
 #define TAG         "main"
@@ -98,6 +99,7 @@ static int tokenize(char *line, char **argv, int max_args)
 static void cmd_help(void)
 {
     printf("  /help                    Show this help\n");
+    printf("  /log [on|off]            Toggle log output\n");
     printf("  /history                 Show conversation message count\n");
     printf("  /clear                   Clear conversation memory\n");
     printf("  /skill [name] [args]     List or execute a skill\n");
@@ -192,6 +194,22 @@ static void cmd_memories(void)
     ai_ltm_list();
 }
 
+static void cmd_log(int argc, char **argv)
+{
+    if (argc < 2) {
+        /* Toggle */
+        claw_log_set_enabled(!claw_log_get_enabled());
+    } else if (strcmp(argv[1], "on") == 0) {
+        claw_log_set_enabled(1);
+    } else if (strcmp(argv[1], "off") == 0) {
+        claw_log_set_enabled(0);
+    } else {
+        printf("Usage: /log [on|off]\n");
+        return;
+    }
+    printf("Log output: %s\n", claw_log_get_enabled() ? "ON" : "OFF");
+}
+
 static void cmd_nodes(void)
 {
     swarm_list_nodes();
@@ -211,6 +229,8 @@ static void dispatch_command(char *line)
 
     if (strcmp(cmd, "/help") == 0) {
         cmd_help();
+    } else if (strcmp(cmd, "/log") == 0) {
+        cmd_log(argc, argv);
     } else if (strcmp(cmd, "/history") == 0) {
         cmd_history();
     } else if (strcmp(cmd, "/clear") == 0) {
@@ -298,6 +318,11 @@ void app_main(void)
         nvs_flash_erase();
         nvs_flash_init();
     }
+#endif
+
+#ifdef CLAW_PLATFORM_ESP_IDF
+    /* Suppress all log output by default; use /log on to enable */
+    esp_log_level_set("*", ESP_LOG_NONE);
 #endif
 
     claw_init();

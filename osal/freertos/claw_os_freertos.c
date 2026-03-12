@@ -221,10 +221,33 @@ void claw_free(void *ptr)
 
 /* ---------- Log ---------- */
 
+static int s_log_enabled;
+
+void claw_log_set_enabled(int enabled)
+{
+    s_log_enabled = enabled;
+#ifdef CLAW_PLATFORM_ESP_IDF
+    if (enabled) {
+        esp_log_level_set("*", ESP_LOG_INFO);
+    } else {
+        esp_log_level_set("*", ESP_LOG_NONE);
+    }
+#endif
+}
+
+int claw_log_get_enabled(void)
+{
+    return s_log_enabled;
+}
+
 #ifdef CLAW_PLATFORM_ESP_IDF
 
 void claw_log(int level, const char *tag, const char *fmt, ...)
 {
+    if (!s_log_enabled) {
+        return;
+    }
+
     va_list ap;
     esp_log_level_t esp_level;
 
@@ -277,8 +300,16 @@ static const char *level_str[] = { "E", "W", "I", "D" };
 void claw_log(int level, const char *tag, const char *fmt, ...)
 {
     va_list ap;
-    if (level < 0) level = 0;
-    if (level > 3) level = 3;
+
+    if (!s_log_enabled) {
+        return;
+    }
+    if (level < 0) {
+        level = 0;
+    }
+    if (level > 3) {
+        level = 3;
+    }
     printf("[%s/%s] ", level_str[level], tag);
     va_start(ap, fmt);
     vprintf(fmt, ap);

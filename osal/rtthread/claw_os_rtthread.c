@@ -206,16 +206,34 @@ void claw_free(void *ptr)
 
 /* ---------- Log ---------- */
 
+static int s_log_enabled;
 static const char *level_str[] = { "E", "W", "I", "D" };
+
+void claw_log_set_enabled(int enabled)
+{
+    s_log_enabled = enabled;
+}
+
+int claw_log_get_enabled(void)
+{
+    return s_log_enabled;
+}
 
 void claw_log(int level, const char *tag, const char *fmt, ...)
 {
     va_list ap;
-    if (level < 0) level = 0;
-    if (level > 3) level = 3;
+
+    if (!s_log_enabled) {
+        return;
+    }
+    if (level < 0) {
+        level = 0;
+    }
+    if (level > 3) {
+        level = 3;
+    }
     rt_kprintf("[%s/%s] ", level_str[level], tag);
     va_start(ap, fmt);
-    /* RT-Thread has no rt_kvprintf, use vsnprintf + rt_kprintf */
     char buf[256];
     vsnprintf(buf, sizeof(buf), fmt, ap);
     va_end(ap);

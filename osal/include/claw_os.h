@@ -102,6 +102,8 @@ void  claw_free(void *ptr);
 
 void claw_log(int level, const char *tag, const char *fmt, ...);
 void claw_log_raw(const char *fmt, ...);
+void claw_log_set_enabled(int enabled);
+int  claw_log_get_enabled(void);
 
 /* Convenience macros */
 #define CLAW_LOGE(tag, fmt, ...) claw_log(CLAW_LOG_ERROR, tag, fmt, ##__VA_ARGS__)
