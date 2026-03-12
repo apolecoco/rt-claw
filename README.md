@@ -69,8 +69,30 @@ tasks in real time.
 
 ### ESP32-C3 (ESP-IDF + QEMU)
 
+**1. Install system dependencies**
+
 ```bash
-# Prerequisites: ESP-IDF v5.x, Espressif QEMU
+# Ubuntu / Debian
+sudo apt install git wget flex bison gperf python3 python3-venv \
+    cmake ninja-build ccache libffi-dev libssl-dev dfu-util \
+    libusb-1.0-0 libgcrypt20-dev libglib2.0-dev libpixman-1-dev \
+    libsdl2-dev libslirp-dev
+
+# Arch Linux
+sudo pacman -S --needed libgcrypt glib2 pixman sdl2 libslirp \
+    python cmake ninja gcc git wget flex bison
+```
+
+**2. Install ESP-IDF + QEMU**
+
+```bash
+# One-line setup (clones ESP-IDF v5.4, installs toolchain + QEMU)
+./tools/setup-esp-env.sh
+```
+
+**3. Build and run**
+
+```bash
 source $HOME/esp/esp-idf/export.sh
 cd platform/esp32c3
 idf.py set-target esp32c3

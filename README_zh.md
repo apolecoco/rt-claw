@@ -65,8 +65,30 @@ rt-claw 通过低成本嵌入式节点与蜂群组网，让智能从云端走向
 
 ### ESP32-C3 (ESP-IDF + QEMU)
 
+**1. 安装系统依赖**
+
 ```bash
-# 依赖：ESP-IDF v5.x, Espressif QEMU
+# Ubuntu / Debian
+sudo apt install git wget flex bison gperf python3 python3-venv \
+    cmake ninja-build ccache libffi-dev libssl-dev dfu-util \
+    libusb-1.0-0 libgcrypt20-dev libglib2.0-dev libpixman-1-dev \
+    libsdl2-dev libslirp-dev
+
+# Arch Linux
+sudo pacman -S --needed libgcrypt glib2 pixman sdl2 libslirp \
+    python cmake ninja gcc git wget flex bison
+```
+
+**2. 安装 ESP-IDF + QEMU**
+
+```bash
+# 一键安装（克隆 ESP-IDF v5.4，安装工具链 + QEMU）
+./tools/setup-esp-env.sh
+```
+
+**3. 构建与运行**
+
+```bash
 source $HOME/esp/esp-idf/export.sh
 cd platform/esp32c3
 idf.py set-target esp32c3
