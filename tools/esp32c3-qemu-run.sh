@@ -1,9 +1,9 @@
 #!/bin/bash
 # Launch rt-claw on ESP32-C3 QEMU (Espressif fork)
 #
-# Two modes:
-#   ./esp32c3-qemu-run.sh           - use idf.py qemu (recommended)
-#   ./esp32c3-qemu-run.sh --raw     - use qemu-system-riscv32 directly
+# Usage:
+#   ./esp32c3-qemu-run.sh               - serial only (default)
+#   ./esp32c3-qemu-run.sh --graphics    - with LCD display window
 #
 # Prerequisites:
 #   1. ESP-IDF installed and sourced (. $IDF_PATH/export.sh)
@@ -30,26 +30,24 @@ if [ ! -d "build" ]; then
     exit 1
 fi
 
-if [ "$1" = "--raw" ]; then
-    # Direct QEMU launch (without idf.py wrapper)
-    # Generate merged flash image
-    FLASH_SIZE="4MB"
-    FLASH_IMAGE="build/flash_image.bin"
+FLASH_SIZE="4MB"
+FLASH_IMAGE="build/flash_image.bin"
 
-    echo ">>> Generating merged flash image ..."
-    esptool.py --chip esp32c3 merge_bin \
-        --fill-flash-size "$FLASH_SIZE" \
-        -o "$FLASH_IMAGE" \
-        @build/flash_args
+echo ">>> Generating merged flash image ..."
+esptool.py --chip esp32c3 merge_bin \
+    --fill-flash-size "$FLASH_SIZE" \
+    -o "$FLASH_IMAGE" \
+    @build/flash_args
 
-    echo ">>> Starting QEMU (ESP32-C3) ..."
-    exec qemu-system-riscv32 -nographic \
-        -icount 1 \
-        -machine esp32c3 \
-        -drive "file=$FLASH_IMAGE,if=mtd,format=raw" \
-        -global driver=timer.esp32c3.timg,property=wdt_disable,value=true \
-        -nic user,model=open_eth
-else
-    # idf.py wrapper (handles flash image creation automatically)
-    exec idf.py qemu monitor
+DISPLAY_FLAG="-nographic"
+if [ "$1" = "--graphics" ]; then
+    DISPLAY_FLAG=""
 fi
+
+echo ">>> Starting QEMU (ESP32-C3, icount=1) ..."
+exec qemu-system-riscv32 $DISPLAY_FLAG \
+    -icount 1 \
+    -machine esp32c3 \
+    -drive "file=$FLASH_IMAGE,if=mtd,format=raw" \
+    -global driver=timer.esp32c3.timg,property=wdt_disable,value=true \
+    -nic user,model=open_eth

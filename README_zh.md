@@ -124,7 +124,7 @@ idf.py menuconfig
 ./tools/esp32c3-build.sh
 
 # 在 QEMU 上运行（自动生成 flash 镜像并启动模拟器）
-./tools/esp32c3-qemu-run.sh --raw
+./tools/esp32c3-qemu-run.sh
 
 # 或烧录到真实硬件
 idf.py -p /dev/ttyUSB0 flash monitor

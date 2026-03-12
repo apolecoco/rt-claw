@@ -127,7 +127,7 @@ idf.py menuconfig
 ./tools/esp32c3-build.sh
 
 # Run on QEMU (generates flash image + launches emulator)
-./tools/esp32c3-qemu-run.sh --raw
+./tools/esp32c3-qemu-run.sh
 
 # Or flash to real hardware
 idf.py -p /dev/ttyUSB0 flash monitor
