@@ -145,9 +145,9 @@ static void cmd_skill(int argc, char **argv)
     }
 
     if (ai_skill_execute(argv[1], params, s_reply, REPLY_SIZE) == CLAW_OK) {
-        printf("\nSkill [%s]> %s\n", argv[1], s_reply);
+        printf("\n<rt-claw> %s\n", s_reply);
     } else {
-        printf("\n[error] %s\n", s_reply);
+        printf("\n<error> %s\n", s_reply);
     }
 }
 
@@ -256,9 +256,9 @@ static void dispatch_command(char *line)
 static void do_chat(const char *msg)
 {
     if (ai_chat(msg, s_reply, REPLY_SIZE) == CLAW_OK) {
-        printf("\nrt-claw> %s\n", s_reply);
+        printf("\n<rt-claw> %s\n", s_reply);
     } else {
-        printf("\n[error] %s\n", s_reply);
+        printf("\n<error> %s\n", s_reply);
     }
 }
 
@@ -291,7 +291,8 @@ static void shell_loop(void)
     printf("\n");
 
     while (1) {
-        printf("\nYou> ");
+        printf("\n<You> ");
+        fflush(stdout);
         int len = uart_read_line(input, sizeof(input));
 
         if (len == 0) {
