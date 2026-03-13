@@ -10,9 +10,6 @@ ARG DEBIAN_FRONTEND=noninteractive
 ENV CARGO_HOME=/root/.cargo
 ENV PATH=${CARGO_HOME}/bin:${PATH}
 
-# copy claude config
-COPY CLAUDE.md /root/.claude/CLAUDE.md
-
 # install vscode and extension
 RUN code-server --install-extension eamodio.gitlens
 
