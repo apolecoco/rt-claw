@@ -17,176 +17,131 @@ the planned fix.
 
 ### P0 — Bugs (Fix Immediately)
 
-#### P0-1: FreeRTOS Timer Callback Type Mismatch
+#### P0-1: FreeRTOS Timer Callback Type Mismatch ✅
 
-**File:** `osal/freertos/claw_os_freertos.c:190-194`
+**File:** `osal/freertos/claw_os_freertos.c`
 
 **Problem:** FreeRTOS timer callbacks have signature
 `void cb(TimerHandle_t xTimer)`, but the OSAL declares
-`void (*callback)(void *arg)`. The current code force-casts the user
-callback pointer:
+`void (*callback)(void *arg)`. The code force-casted the user callback
+pointer, so any timer callback that uses `arg` would read garbage.
 
-```c
-TimerHandle_t t = xTimerCreate(name, pdMS_TO_TICKS(period_ms),
-                                repeat ? pdTRUE : pdFALSE,
-                                arg,
-                                (TimerCallbackFunction_t)callback);
-```
+**Resolution:** Added `timer_ctx_t` trampoline struct. The trampoline
+retrieves the real callback and arg via `pvTimerGetTimerID()`.
 
-The user's `arg` is stored as `pvTimerID`, but the callback receives the
-`TimerHandle_t` — not `arg`. All current callers ignore their parameter
-(`(void)arg`), so this works by accident. Any future timer callback that
-uses `arg` will crash or read garbage.
+#### P0-2: RT-Thread MQ Send Redundant Branch ✅
 
-**Fix:** Add a trampoline structure that stores both the user callback and
-arg, retrieve them via `pvTimerGetTimerID()` in the trampoline.
+**File:** `osal/rtthread/claw_os_rtthread.c`
 
-**Risk:** Low — purely internal refactor, ABI unchanged.
+**Problem:** Both `if` and `else` branches were identical (dead code).
 
-#### P0-2: RT-Thread MQ Send Redundant Branch
-
-**File:** `osal/rtthread/claw_os_rtthread.c:128-131`
-
-**Problem:** Both `if` and `else` branches are identical:
-
-```c
-if (timeout_ms == CLAW_NO_WAIT || timeout_ms == CLAW_WAIT_FOREVER)
-    ret = rt_mq_send_wait(..., ms_to_tick(timeout_ms));
-else
-    ret = rt_mq_send_wait(..., ms_to_tick(timeout_ms));
-```
-
-**Fix:** Remove the dead branch, keep single call.
+**Resolution:** Collapsed to a single call.
 
 ---
 
 ### P1 — Code Hygiene (Fix Soon)
 
-#### P1-1: Header Guard Naming Inconsistency
+#### P1-1: Header Guard Naming Inconsistency ✅
 
 **Standard (per coding-style.md):** `CLAW_<PATH>_<NAME>_H`
 
-**Violations:** Multiple headers use `__CLAW_*_H__` (double underscore
-prefix is reserved by the C standard for the implementation):
+**Problem:** Multiple headers used `__CLAW_*_H__` (double underscore
+prefix is reserved by the C standard).
 
-| File | Current | Should Be |
-|------|---------|-----------|
-| `include/claw_os.h` | `__CLAW_OS_H__` | `CLAW_OS_H` |
-| `include/claw_init.h` | `__CLAW_INIT_H__` | `CLAW_INIT_H` |
-| `include/core/gateway.h` | `__CLAW_GATEWAY_H__` | `CLAW_CORE_GATEWAY_H` |
-| `include/services/net/net_service.h` | `__CLAW_NET_SERVICE_H__` | `CLAW_SERVICES_NET_SERVICE_H` |
-| `include/services/swarm/swarm.h` | `__CLAW_SWARM_H__` | `CLAW_SERVICES_SWARM_H` |
-| `include/services/ai/ai_engine.h` | `__CLAW_AI_ENGINE_H__` | `CLAW_SERVICES_AI_ENGINE_H` |
-| `include/tools/claw_tools.h` | `__CLAW_TOOLS_H__` | `CLAW_TOOLS_H` |
+**Resolution:** All header guards renamed to `CLAW_<PATH>_<NAME>_H`.
 
-**Fix:** Rename all header guards to match the coding standard.
+#### P1-2: Logging Disabled at Boot ✅
 
-#### P1-2: Logging Disabled at Boot
+**Problem:** `s_log_enabled` defaulted to 0, silently dropping all
+`CLAW_LOGI`/`CLAW_LOGW`/`CLAW_LOGE` calls during early init.
 
-**Problem:** `s_log_enabled` defaults to 0 in both OSAL implementations.
-`claw_log_raw()` bypasses this check (the boot banner works), but all
-`CLAW_LOGI`/`CLAW_LOGW`/`CLAW_LOGE` calls during early init are silently
-dropped until the platform `main()` calls `claw_log_set_enabled(1)`.
-
-**Fix:** Default `s_log_enabled` to 1. Logging should be on by default;
-callers who want silence can explicitly disable it.
+**Resolution:** Default `s_log_enabled` to 1 in both OSAL
+implementations.
 
 ---
 
 ### P2 — Architecture Improvements (Plan & Discuss)
 
-#### P2-1: OSAL Network Abstraction Missing
+#### P2-1: OSAL Network Abstraction Missing ✅
 
-**Problem:** `claw_os.h` covers threads, sync, memory, logging, and time
-— but not networking. All network-dependent code in `claw/` uses `#ifdef`
-platform switches:
+**Problem:** No networking API in OSAL. All HTTP transport used
+`#ifdef` platform switches in core code.
 
-- `ai_engine.c` — ~350 lines of platform-specific HTTP transport
-- `net_service.c` — ~240 lines, completely different per platform
-- `swarm.c` — platform-specific node ID generation and socket includes
-
-This undermines the OSAL's goal: "all core code depends only on
-`include/claw_os.h`".
-
-**Recommended approach:** Add a minimal HTTP client API to OSAL:
-
-```c
-int claw_http_post(const char *url, const char *headers[],
-                   const char *body, size_t body_len,
-                   char *resp, size_t resp_size);
-```
-
-Implement per-platform in `osal/freertos/` and `osal/rtthread/`.
+**Resolution:** Added `claw_net.h` with `claw_net_post()` HTTP client
+API. Per-platform implementations in `osal/freertos/` and
+`osal/rtthread/`.
 
 #### P2-2: Gateway Is a No-Op Router ✅
 
-**Problem:** `gateway.c` receives messages via its queue but only logs
-them. No handler registration, no dispatch table, no subscriber pattern.
-Services bypass it completely — `feishu.c` calls `ai_chat()` directly.
-The `dst_channel` field in `struct gateway_msg` is unused.
+**Problem:** `gateway.c` received messages but only logged them.
+No handler registration, no dispatch, no subscriber pattern.
 
 **Resolution:** Stripped to minimal skeleton for future inter-node
-routing. Removed event-bus machinery (subscribe, dispatch, handler table,
-mutex) and unused `src_channel` / `dst_channel` fields. Gateway now only
-keeps a message queue and thread — routing logic will be added when swarm
-multi-node communication is implemented. Swarm node events use direct
-logging instead of gateway dispatch.
+routing. Removed event-bus machinery (subscribe, dispatch, handler
+table, mutex) and unused `src_channel` / `dst_channel` fields.
+Gateway now only keeps a message queue and thread — routing logic
+will be added when swarm multi-node communication is implemented.
+Swarm node events use direct logging instead of gateway dispatch.
 
-#### P2-3: No Unified Service Interface
+#### P2-3: No Unified Service Interface ✅
 
-**Problem:** Services have inconsistent lifecycle patterns. Some have
-`init()` only, some have `init()` + `start()`, none have `stop()` or
-`deinit()`. The boot sequence in `claw_init()` is hardcoded.
+**Problem:** Services had inconsistent lifecycle patterns.
 
-**Recommendation:** Define a service descriptor:
+**Resolution:** Defined `claw_service_t` struct with `name`, `init`,
+`start`, `stop` fields. Services registered in a table in
+`claw_init.c`, iterated during boot.
 
-```c
-struct claw_service {
-    const char *name;
-    int (*init)(void);
-    int (*start)(void);
-    void (*stop)(void);
-};
-```
+#### P2-4: Blocking AI Call at Boot ✅
 
-Register services in a table, iterate during init/shutdown.
+**Problem:** `claw_init()` made a synchronous `ai_chat_raw()` call,
+blocking boot for up to ~18 seconds if the API was unreachable.
 
-#### P2-4: Blocking AI Call at Boot
+**Resolution:** AI connectivity test moved to a separate low-priority
+thread (`ai_boot_test_thread`), boot completes without blocking.
 
-**Problem:** `claw_init()` (line 68-82) makes a synchronous
-`ai_chat_raw()` call during startup. If the API is unreachable, this
-blocks boot for up to ~18 seconds (3 retries with exponential backoff).
+#### P2-5: Fixed-Size Gateway Message Payload — Deferred
 
-**Fix:** Move the AI connectivity test to a scheduler task or a
-low-priority thread that runs after boot completes.
+**Problem:** `struct gateway_msg` embeds `uint8_t payload[256]` —
+every message costs ~260 bytes regardless of actual payload size.
 
-#### P2-5: Fixed-Size Gateway Message Payload
+**Status:** Acceptable for now. Gateway is a minimal skeleton; revisit
+when inter-node routing is implemented and memory pressure increases.
 
-**Problem:** `struct gateway_msg` embeds `uint8_t payload[256]` — every
-message costs ~268 bytes regardless of actual payload size. With
-`CLAW_GW_MSG_POOL_SIZE=16`, the queue alone uses ~4.3KB.
-
-**Options:**
-- Use a pointer + length (heap-allocated payload)
-- Use a union with small inline buffer + overflow pointer
-- Accept current design (adequate for ESP32-C3's 400KB SRAM)
-
-**Recommendation:** Accept for now; revisit if memory pressure increases.
-
-#### P2-6: Tool Registry Thread Safety
+#### P2-6: Tool Registry Thread Safety — Deferred
 
 **Problem:** `s_tools[]` and `s_tool_count` in `claw_tools.c` have no
-mutex protection. Currently safe because registration happens at init
-time, but reads (`claw_tool_find`, `claw_tools_to_json`) occur from
-multiple threads during runtime.
+mutex protection.
 
-**Recommendation:** Low risk currently. Add a read lock if dynamic tool
-registration is added later.
+**Status:** Low risk — registration is init-time only. Add a read lock
+if dynamic tool registration is added later.
+
+---
+
+## Backlog
+
+### B-1: OpenClaw-Style Heartbeat (Periodic AI Check-in)
+
+**Inspired by:** OpenClaw's heartbeat mechanism — a timer-driven LLM
+check that periodically reviews a task file and proactively notifies
+the user of actionable items.
+
+**Concept:** A scheduled task that periodically calls `ai_chat()` to
+review pending items (e.g. sensor alerts, swarm status changes,
+scheduled reminders) and pushes a summary to the user via IM if
+anything is actionable.
+
+**Where it fits:** Scheduler service (`claw/core/scheduler`), not
+gateway or swarm. The scheduler already has timer infrastructure;
+this would be a new scheduled task type.
+
+**Status:** Planned — not yet implemented.
 
 ## Implementation Order
 
-| Phase | Issues | Scope |
-|-------|--------|-------|
-| Phase 1 | P0-1, P0-2, P1-1, P1-2 | Bug fixes + code hygiene |
-| Phase 2 | P2-4, P2-2 | Boot optimization + Gateway redesign |
-| Phase 3 | P2-1, P2-3 | OSAL network + service interface |
+| Phase | Issues | Status |
+|-------|--------|--------|
+| Phase 1 | P0-1, P0-2, P1-1, P1-2 | ✅ Done |
+| Phase 2 | P2-4, P2-2 | ✅ Done |
+| Phase 3 | P2-1, P2-3 | ✅ Done |
+| Deferred | P2-5, P2-6 | Low priority |
+| Backlog | B-1 | Planned |

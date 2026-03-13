@@ -15,124 +15,114 @@ rt-claw 架构设计方向正确，OSAL 抽象模式清晰。审查发现 10 个
 
 ### P0 — Bug（立即修复）
 
-#### P0-1：FreeRTOS Timer 回调类型不安全
+#### P0-1：FreeRTOS Timer 回调类型不安全 ✅
 
-**文件：** `osal/freertos/claw_os_freertos.c:190-194`
+**文件：** `osal/freertos/claw_os_freertos.c`
 
-**问题：** FreeRTOS timer 回调签名是 `void cb(TimerHandle_t xTimer)`，
-但 OSAL 声明的是 `void (*callback)(void *arg)`。当前代码强制类型转换：
+**问题：** FreeRTOS timer 回调签名与 OSAL 声明不匹配，强制类型转换
+导致 `arg` 参数读取错误。
 
-```c
-TimerHandle_t t = xTimerCreate(name, pdMS_TO_TICKS(period_ms),
-                                repeat ? pdTRUE : pdFALSE,
-                                arg,
-                                (TimerCallbackFunction_t)callback);
-```
+**已解决：** 添加 `timer_ctx_t` trampoline 结构体，通过
+`pvTimerGetTimerID()` 取回真正的用户回调和 arg。
 
-用户的 `arg` 存在 `pvTimerID` 中，但回调收到的是 `TimerHandle_t` 而不是
-`arg`。当前所有调用者都忽略了参数（`(void)arg`），侥幸未崩溃。但未来任何
-使用 `arg` 的 timer 回调都会读到错误数据。
+#### P0-2：RT-Thread MQ Send 冗余分支 ✅
 
-**修复：** 添加 trampoline 结构体，通过 `pvTimerGetTimerID()` 取回真正的
-用户回调和 arg。
-
-#### P0-2：RT-Thread MQ Send 冗余分支
-
-**文件：** `osal/rtthread/claw_os_rtthread.c:128-131`
+**文件：** `osal/rtthread/claw_os_rtthread.c`
 
 **问题：** if/else 两个分支代码完全相同，属于死代码。
 
-**修复：** 删除冗余分支，保留单行调用。
+**已解决：** 删除冗余分支，保留单行调用。
 
 ---
 
 ### P1 — 代码规范（尽快修复）
 
-#### P1-1：Header Guard 命名不统一
+#### P1-1：Header Guard 命名不统一 ✅
 
-**规范（coding-style.md）：** `CLAW_<PATH>_<NAME>_H`
+**问题：** 多个头文件使用 `__CLAW_*_H__`（双下划线前缀为 C 标准
+保留命名空间）。
 
-**违规：** 多个头文件使用 `__CLAW_*_H__`（双下划线前缀在 C 标准中为保留
-命名空间）。
+**已解决：** 统一重命名为 `CLAW_<PATH>_<NAME>_H` 格式。
 
-| 文件 | 当前 | 应改为 |
-|------|------|--------|
-| `include/claw_os.h` | `__CLAW_OS_H__` | `CLAW_OS_H` |
-| `include/claw_init.h` | `__CLAW_INIT_H__` | `CLAW_INIT_H` |
-| `include/core/gateway.h` | `__CLAW_GATEWAY_H__` | `CLAW_CORE_GATEWAY_H` |
-| `include/services/net/net_service.h` | `__CLAW_NET_SERVICE_H__` | `CLAW_SERVICES_NET_SERVICE_H` |
-| `include/services/swarm/swarm.h` | `__CLAW_SWARM_H__` | `CLAW_SERVICES_SWARM_H` |
-| `include/services/ai/ai_engine.h` | `__CLAW_AI_ENGINE_H__` | `CLAW_SERVICES_AI_ENGINE_H` |
-| `include/tools/claw_tools.h` | `__CLAW_TOOLS_H__` | `CLAW_TOOLS_H` |
+#### P1-2：日志默认关闭 ✅
 
-**修复：** 统一重命名所有 header guard。
+**问题：** `s_log_enabled` 默认值为 0，早期 init 阶段日志静默丢弃。
 
-#### P1-2：日志默认关闭
-
-**问题：** 两个 OSAL 实现中 `s_log_enabled` 默认值为 0。
-`claw_log_raw()` 绕过此检查（启动 banner 正常），但所有
-`CLAW_LOGI`/`CLAW_LOGW`/`CLAW_LOGE` 在日志启用前静默丢弃。
-
-**修复：** 将 `s_log_enabled` 默认值改为 1。
+**已解决：** 两个 OSAL 实现中 `s_log_enabled` 默认值改为 1。
 
 ---
 
 ### P2 — 架构改进（规划讨论）
 
-#### P2-1：OSAL 缺少网络抽象
+#### P2-1：OSAL 缺少网络抽象 ✅
 
-**问题：** `claw_os.h` 覆盖了线程/同步/内存/日志/时间，但没有网络 API。
-`claw/` 中所有网络相关代码都使用 `#ifdef` 平台分支：
+**问题：** OSAL 无网络 API，核心代码中 HTTP 传输使用 `#ifdef`
+平台分支。
 
-- `ai_engine.c` — ~350 行平台特定 HTTP 传输
-- `net_service.c` — ~240 行，各平台完全不同
-- `swarm.c` — 平台特定的节点 ID 生成和 socket 引用
-
-**建议：** 在 OSAL 中增加最小 HTTP 客户端 API，将传输逻辑下沉到
-`osal/` 目录。
+**已解决：** 新增 `claw_net.h`，提供 `claw_net_post()` HTTP 客户端
+API，各平台在 `osal/` 目录下实现。
 
 #### P2-2：Gateway 是空壳路由器 ✅
 
-**问题：** `gateway.c` 收到消息只打日志，不做路由。无 handler 注册、
-无分发表、无订阅模式。服务之间直接调用，绕过 Gateway。
+**问题：** `gateway.c` 收到消息只打日志，无路由功能。
 
 **已解决：** 精简为节点间路由最小骨架。移除事件总线机制
-（subscribe、dispatch、handler 表、mutex）和未使用的
-`src_channel` / `dst_channel` 字段。Gateway 仅保留消息队列和
-线程——路由逻辑待 swarm 多节点通信实现时添加。Swarm 节点
-事件改为直接日志输出。
+（subscribe、dispatch、handler 表、mutex）和未使用字段。
+Gateway 仅保留消息队列和线程——路由逻辑待 swarm 多节点通信
+实现时添加。Swarm 节点事件改为直接日志输出。
 
-#### P2-3：无统一服务接口
+#### P2-3：无统一服务接口 ✅
 
-**问题：** 服务生命周期模式不一致。部分只有 `init()`，部分有
-`init()` + `start()`，均无 `stop()` 或 `deinit()`。
+**问题：** 服务生命周期模式不一致。
 
-**建议：** 定义 `struct claw_service { name, init, start, stop }`
-接口。
+**已解决：** 定义 `claw_service_t` 结构体（name/init/start/stop），
+服务注册到 `claw_init.c` 的表中，启动时遍历执行。
 
-#### P2-4：启动时阻塞式 AI 调用
+#### P2-4：启动时阻塞式 AI 调用 ✅
 
 **问题：** `claw_init()` 同步调用 `ai_chat_raw()`，最坏阻塞 ~18 秒。
 
-**修复：** 将 AI 连通性测试移到独立线程异步执行。
+**已解决：** AI 连通性测试移到独立低优先级线程
+（`ai_boot_test_thread`），启动不再阻塞。
 
-#### P2-5：Gateway 消息固定 256 字节 Payload
+#### P2-5：Gateway 消息固定 256 字节 Payload — 延后
 
-**问题：** 每条消息 ~268 字节，16 条队列 = ~4.3KB。当前可接受。
+**问题：** 每条消息 ~260 字节，不论实际负载大小。
 
-**建议：** 暂不修改，内存压力增大时再优化。
+**状态：** 当前可接受。Gateway 已精简为最小骨架，待节点间路由
+实现且内存压力增大时再优化。
 
-#### P2-6：Tool 注册表线程安全
+#### P2-6：Tool 注册表线程安全 — 延后
 
-**问题：** `s_tools[]` 无互斥保护。当前安全（注册在 init 时完成），
-但运行时读取发生在多线程中。
+**问题：** `s_tools[]` 无互斥保护。
 
-**建议：** 当前风险低，动态注册时再加锁。
+**状态：** 当前风险低（注册在 init 时完成）。动态注册时再加锁。
+
+---
+
+## 待办事项
+
+### B-1：OpenClaw 风格心跳（定时 AI 巡检）
+
+**灵感来源：** OpenClaw 的 heartbeat 机制——定时驱动 LLM 检查任务
+文件，有可执行事项时主动通知用户。
+
+**概念：** 定时任务周期性调用 `ai_chat()`，审查待处理事项（传感器
+告警、swarm 状态变化、定时提醒等），有可操作内容时通过 IM 推送
+摘要给用户。
+
+**归属：** Scheduler 服务（`claw/core/scheduler`），而非 gateway
+或 swarm。Scheduler 已具备定时器基础设施，这将作为新的定时任务
+类型。
+
+**状态：** 规划中——尚未实现。
 
 ## 实施顺序
 
-| 阶段 | 问题 | 范围 |
+| 阶段 | 问题 | 状态 |
 |------|------|------|
-| 第一阶段 | P0-1, P0-2, P1-1, P1-2 | Bug 修复 + 代码规范 |
-| 第二阶段 | P2-4, P2-2 | 启动优化 + Gateway 重设计 |
-| 第三阶段 | P2-1, P2-3 | OSAL 网络抽象 + 服务接口 |
+| 第一阶段 | P0-1, P0-2, P1-1, P1-2 | ✅ 已完成 |
+| 第二阶段 | P2-4, P2-2 | ✅ 已完成 |
+| 第三阶段 | P2-1, P2-3 | ✅ 已完成 |
+| 延后 | P2-5, P2-6 | 低优先级 |
+| 待办 | B-1 | 规划中 |
