@@ -112,8 +112,26 @@ static void ai_worker_thread(void *arg)
             continue;
         }
 
-        if (ai_chat_raw(ctx->prompt, ctx->reply,
-                        SCHED_REPLY_MAX) == CLAW_OK) {
+        /*
+         * Set channel hint so the agent knows where output goes.
+         * reply_fn set → messaging channel (Feishu, etc.),
+         * otherwise → serial console.
+         */
+        if (ctx->reply_fn) {
+            ai_set_channel_hint(
+                " This is a scheduled background task."
+                " Deliver results as concise text to the"
+                " messaging channel. Do NOT use LCD display"
+                " or mention serial console.");
+        } else {
+            ai_set_channel_hint(
+                " This is a scheduled background task."
+                " Output to serial console only.");
+        }
+
+        int rc = ai_chat_raw(ctx->prompt, ctx->reply,
+                             SCHED_REPLY_MAX);
+        if (rc == CLAW_OK && ctx->reply[0] != '\0') {
             if (ctx->reply_fn) {
                 ctx->reply_fn(ctx->reply_target, ctx->reply);
             } else {
@@ -121,7 +139,59 @@ static void ai_worker_thread(void *arg)
                        ctx->reply);
                 fflush(stdout);
             }
+        } else {
+            /*
+             * Task failed.  Save the error reason, then decide
+             * whether to ask the agent to compose a friendly
+             * notification or just forward the raw error.
+             */
+            char err_reason[128];
+            const char *src = ctx->reply[0] ? ctx->reply
+                                            : "unknown error";
+            strncpy(err_reason, src, sizeof(err_reason) - 1);
+            err_reason[sizeof(err_reason) - 1] = '\0';
+
+            int notified = 0;
+
+            /*
+             * Only retry via AI when the failure is NOT an API
+             * error — if the API itself is down (503, timeout,
+             * etc.) another call will also fail.
+             */
+            if (!strstr(err_reason, "API")) {
+                snprintf(ctx->prompt, SCHED_PROMPT_MAX,
+                         "A scheduled task failed: %s. "
+                         "Briefly inform the user and suggest "
+                         "they can retry later.",
+                         err_reason);
+
+                rc = ai_chat_raw(ctx->prompt, ctx->reply,
+                                 SCHED_REPLY_MAX);
+                if (rc == CLAW_OK && ctx->reply[0] != '\0') {
+                    if (ctx->reply_fn) {
+                        ctx->reply_fn(ctx->reply_target,
+                                      ctx->reply);
+                    } else {
+                        printf("\n\033[0;33m<sched>\033[0m %s\n",
+                               ctx->reply);
+                        fflush(stdout);
+                    }
+                    notified = 1;
+                }
+            }
+
+            if (!notified) {
+                if (ctx->reply_fn) {
+                    ctx->reply_fn(ctx->reply_target, err_reason);
+                } else {
+                    printf("\n\033[0;33m<sched>\033[0m %s\n",
+                           err_reason);
+                    fflush(stdout);
+                }
+            }
         }
+
+        ai_set_channel_hint(NULL);
 
         claw_mutex_lock(s_worker_lock, CLAW_WAIT_FOREVER);
         s_worker_busy = 0;
