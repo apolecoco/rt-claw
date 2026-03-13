@@ -61,7 +61,8 @@ jobs:
       - name: Prepare firmware artifacts
         run: |
           mkdir -p firmware-out
-          BUILD_DIR=build/esp32s3
+          PLATFORM_DIR=platform/esp32s3
+          BUILD_DIR=${PLATFORM_DIR}/build
 
           cp ${BUILD_DIR}/bootloader/bootloader.bin firmware-out/bootloader.bin
           cp ${BUILD_DIR}/partition_table/partition-table.bin firmware-out/partition-table.bin
