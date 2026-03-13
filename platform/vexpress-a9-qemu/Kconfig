@@ -2,7 +2,7 @@ mainmenu "RT-Claw Project Configuration"
 
 BSP_DIR := .
 
-RTT_DIR := vendor/rt-thread
+RTT_DIR := vendor/os/rt-thread
 
 PKGS_DIR := packages
 

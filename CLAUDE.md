@@ -103,6 +103,9 @@ No unit test framework yet. Verify changes by:
 | `include/` | Unified public headers (claw_os.h, claw_net.h, etc.) |
 | `osal/freertos/` | FreeRTOS OSAL implementation |
 | `osal/rtthread/` | RT-Thread OSAL implementation |
+| `vendor/lib/cjson/` | cJSON library |
+| `vendor/os/freertos/` | FreeRTOS-Kernel (submodule) |
+| `vendor/os/rt-thread/` | RT-Thread (submodule) |
 | `claw/claw_init.c` | Boot entry point |
 | `include/claw_config.h` | Compile-time constants (platform-independent) |
 | `claw/core/gateway.c` | Message router |

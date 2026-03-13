@@ -223,8 +223,10 @@ rt-claw/
 │   ├── esp32s3-qemu/           # ESP32-S3 QEMU (ESP-IDF, Meson + CMake)
 │   └── vexpress-a9-qemu/      # RT-Thread BSP (Meson + SCons)
 ├── vendor/
-│   ├── freertos/               # FreeRTOS-Kernel (submodule)
-│   └── rt-thread/              # RT-Thread (submodule)
+│   ├── lib/cjson/              # cJSON library
+│   └── os/
+│       ├── freertos/           # FreeRTOS-Kernel (submodule)
+│       └── rt-thread/          # RT-Thread (submodule)
 ├── docs/
 │   ├── en/                     # English documentation
 │   └── zh/                     # Chinese documentation

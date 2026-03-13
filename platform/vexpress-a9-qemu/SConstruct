@@ -6,7 +6,7 @@ import rtconfig
 if os.getenv('RTT_ROOT'):
     RTT_ROOT = os.getenv('RTT_ROOT')
 else:
-    RTT_ROOT = os.path.normpath(os.path.join(os.getcwd(), '..', '..', 'vendor', 'rt-thread'))
+    RTT_ROOT = os.path.normpath(os.path.join(os.getcwd(), '..', '..', 'vendor', 'os', 'rt-thread'))
 
 sys.path = sys.path + [os.path.join(RTT_ROOT, 'tools')]
 from building import *

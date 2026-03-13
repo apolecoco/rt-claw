@@ -17,25 +17,25 @@ if osal_backend == 'rtthread'
     platform_defs += ['-D_POSIX_SOURCE', '-DCLAW_PLATFORM_RTTHREAD']
     rtt = project_root / 'vendor' / 'rt-thread'
     platform_incs += include_directories(
-        'vendor/rt-thread/include',
-        'vendor/rt-thread/libcpu/arm/cortex-a',
-        'vendor/rt-thread/components/legacy',
-        'vendor/rt-thread/components/finsh',
-        'vendor/rt-thread/components/net/lwip/port',
-        'vendor/rt-thread/components/net/lwip/port/netif',
+        'vendor/os/rt-thread/include',
+        'vendor/os/rt-thread/libcpu/arm/cortex-a',
+        'vendor/os/rt-thread/components/legacy',
+        'vendor/os/rt-thread/components/finsh',
+        'vendor/os/rt-thread/components/net/lwip/port',
+        'vendor/os/rt-thread/components/net/lwip/port/netif',
         'platform/vexpress-a9-qemu/drivers',
-        'vendor/rt-thread/components/libc/compilers/common/include',
-        'vendor/rt-thread/components/libc/compilers/newlib',
-        'vendor/rt-thread/components/libc/posix/io/poll',
-        'vendor/rt-thread/components/libc/posix/io/stdio',
-        'vendor/rt-thread/components/libc/posix/ipc',
-        'vendor/rt-thread/components/drivers/include',
-        'vendor/rt-thread/components/net/sal/include',
-        'vendor/rt-thread/components/net/sal/include/socket',
-        'vendor/rt-thread/components/net/sal/include/socket/sys_socket',
-        'vendor/rt-thread/components/net/netdev/include',
-        'vendor/rt-thread/components/net/lwip/lwip-2.1.2/src/include',
-        'vendor/rt-thread/components/net/lwip/lwip-2.1.2/src/include/netif',
+        'vendor/os/rt-thread/components/libc/compilers/common/include',
+        'vendor/os/rt-thread/components/libc/compilers/newlib',
+        'vendor/os/rt-thread/components/libc/posix/io/poll',
+        'vendor/os/rt-thread/components/libc/posix/io/stdio',
+        'vendor/os/rt-thread/components/libc/posix/ipc',
+        'vendor/os/rt-thread/components/drivers/include',
+        'vendor/os/rt-thread/components/net/sal/include',
+        'vendor/os/rt-thread/components/net/sal/include/socket',
+        'vendor/os/rt-thread/components/net/sal/include/socket/sys_socket',
+        'vendor/os/rt-thread/components/net/netdev/include',
+        'vendor/os/rt-thread/components/net/lwip/lwip-2.1.2/src/include',
+        'vendor/os/rt-thread/components/net/lwip/lwip-2.1.2/src/include/netif',
         'platform/vexpress-a9-qemu',
         is_system: true,
     )
@@ -62,6 +62,6 @@ endif
 # Unified header directory for all rt-claw public headers
 claw_inc = include_directories('include')
 
-subdir('vendor/cjson')
+subdir('vendor/lib/cjson')
 subdir('osal')
 subdir('claw')

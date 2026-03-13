@@ -42,7 +42,7 @@ target_compile_definitions(${COMPONENT_LIB} PUBLIC CLAW_PLATFORM_ESP_IDF)
 # participate in ESP-IDF's normal link group (resolves cross-references).
 file(GLOB _rtclaw_objs "${MESON_BUILD_DIR}/claw/librtclaw.a.p/*.o")
 file(GLOB _osal_objs   "${MESON_BUILD_DIR}/osal/libosal.a.p/*.o")
-file(GLOB _cjson_objs  "${MESON_BUILD_DIR}/vendor/cjson/libcjson.a.p/*.o")
+file(GLOB _cjson_objs  "${MESON_BUILD_DIR}/vendor/lib/cjson/libcjson.a.p/*.o")
 
 set(_all_meson_objs ${_rtclaw_objs} ${_osal_objs} ${_cjson_objs})
 
