@@ -25,8 +25,8 @@ claw_inc = [
 ]
 Env.AppendUnique(CPPPATH=[os.path.abspath(p) for p in claw_inc])
 
-# Link pre-built libraries from Meson (build/qemu-a9/)
-build_dir = os.path.join(project_root, 'build', 'qemu-a9')
+# Link pre-built libraries from Meson (build/vexpress-a9-qemu/)
+build_dir = os.path.join(project_root, 'build', 'vexpress-a9-qemu')
 Env.AppendUnique(LIBS=['rtclaw', 'osal', 'cjson'])
 Env.AppendUnique(LIBPATH=[
     os.path.join(build_dir, 'src'),
