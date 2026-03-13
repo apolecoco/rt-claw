@@ -224,10 +224,24 @@ int swarm_start(void)
 
     s_hb_timer = claw_timer_create("swarm_hb", heartbeat_timer_cb, NULL,
                                     CLAW_SWARM_HEARTBEAT_MS, 1);
+    if (!s_hb_timer) {
+        CLAW_LOGE(TAG, "timer create failed");
+        close(s_sock);
+        s_sock = -1;
+        return CLAW_ERROR;
+    }
     claw_timer_start(s_hb_timer);
 
-    claw_thread_create("swarm_rx", receiver_thread, NULL,
-                       CLAW_SWARM_THREAD_STACK, CLAW_SWARM_THREAD_PRIO);
+    claw_thread_t rx = claw_thread_create("swarm_rx", receiver_thread,
+                                           NULL,
+                                           CLAW_SWARM_THREAD_STACK,
+                                           CLAW_SWARM_THREAD_PRIO);
+    if (!rx) {
+        CLAW_LOGE(TAG, "rx thread create failed");
+        close(s_sock);
+        s_sock = -1;
+        return CLAW_ERROR;
+    }
 
     CLAW_LOGI(TAG, "heartbeat started, port=%d", CLAW_SWARM_PORT);
     return CLAW_OK;

@@ -155,6 +155,12 @@ int heartbeat_init(void)
     s_reply_lock = claw_mutex_create("hb_rp");
     if (!s_lock || !s_reply_lock) {
         CLAW_LOGE(TAG, "mutex create failed");
+        if (s_lock) {
+            claw_mutex_delete(s_lock);
+        }
+        if (s_reply_lock) {
+            claw_mutex_delete(s_reply_lock);
+        }
         return CLAW_ERROR;
     }
 

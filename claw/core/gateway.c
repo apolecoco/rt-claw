@@ -43,6 +43,8 @@ int gateway_init(void)
                                           CLAW_GW_THREAD_PRIO);
     if (!t) {
         CLAW_LOGE(TAG, "thread create failed");
+        claw_mq_delete(gw_mq);
+        gw_mq = NULL;
         return CLAW_ERROR;
     }
 

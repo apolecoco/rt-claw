@@ -427,8 +427,17 @@ int ai_chat_raw(const char *prompt, char *reply, size_t reply_size)
 int ai_engine_init(void)
 {
     s_api_lock = claw_mutex_create("ai_api");
-    ai_memory_init();
-    ai_ltm_init();
+    if (!s_api_lock) {
+        CLAW_LOGE(TAG, "mutex create failed");
+        return CLAW_ERROR;
+    }
+
+    if (ai_memory_init() != CLAW_OK) {
+        CLAW_LOGW(TAG, "memory init failed");
+    }
+    if (ai_ltm_init() != CLAW_OK) {
+        CLAW_LOGW(TAG, "ltm init failed");
+    }
 
     if (strlen(AI_API_KEY) == 0) {
         CLAW_LOGW(TAG, "no API key configured");

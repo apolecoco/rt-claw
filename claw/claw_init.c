@@ -111,7 +111,10 @@ int claw_init(void)
     }
 
     /* AI connectivity test — run async to avoid blocking boot */
-    claw_thread_create("ai_test", ai_boot_test_thread, NULL, 8192, 20);
+    if (!claw_thread_create("ai_test", ai_boot_test_thread,
+                            NULL, 8192, 20)) {
+        CLAW_LOGW(TAG, "ai_test thread create failed");
+    }
 
     return CLAW_OK;
 }

@@ -83,6 +83,8 @@ int sched_init(void)
                                            CLAW_SCHED_THREAD_PRIO);
     if (!th) {
         CLAW_LOGE(TAG, "thread create failed");
+        claw_mutex_delete(s_lock);
+        s_lock = NULL;
         return CLAW_ERROR;
     }
 

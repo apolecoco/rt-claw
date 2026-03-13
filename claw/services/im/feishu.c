@@ -1034,6 +1034,10 @@ int feishu_init(void)
     }
     s_msg_sem = claw_sem_create("fs_msg", 0);
     s_msg_lock = claw_mutex_create("fs_msg");
+    if (!s_msg_sem || !s_msg_lock) {
+        CLAW_LOGE(TAG, "sem/mutex create failed");
+        return CLAW_ERROR;
+    }
     memset(&s_msg, 0, sizeof(s_msg));
 
     s_token[0] = '\0';
@@ -1046,8 +1050,12 @@ int feishu_init(void)
 int feishu_start(void)
 {
     /* AI worker thread — handles ai_chat() off the websocket stack */
-    claw_thread_create("fs_ai", ai_worker_thread, NULL,
-                       WORKER_STACK, 10);
+    claw_thread_t w = claw_thread_create("fs_ai", ai_worker_thread,
+                                          NULL, WORKER_STACK, 10);
+    if (!w) {
+        CLAW_LOGE(TAG, "failed to create AI worker");
+        return CLAW_ERROR;
+    }
 
     claw_thread_t t = claw_thread_create("feishu", feishu_thread, NULL,
                                          8192, 10);
