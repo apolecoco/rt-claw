@@ -5,12 +5,14 @@
  * Swarm service — heartbeat broadcast and node discovery via UDP.
  */
 
-#include <string.h>
-#include <stdio.h>
 #include "claw_os.h"
 #include "claw_config.h"
+#include "claw_net.h"
 #include "swarm.h"
 #include "gateway.h"
+
+#include <string.h>
+#include <stdio.h>
 
 #define TAG "swarm"
 
@@ -19,10 +21,9 @@ static int node_count = 0;
 static claw_mutex_t swarm_lock;
 static uint32_t s_self_id;
 
-/* Platform-specific includes and node ID generation */
+/* Node ID generation — platform-specific hardware identity */
 #ifdef CLAW_PLATFORM_ESP_IDF
 #include "esp_mac.h"
-#include "lwip/sockets.h"
 
 static uint32_t generate_node_id(void)
 {
@@ -33,14 +34,9 @@ static uint32_t generate_node_id(void)
 }
 
 #elif defined(CLAW_PLATFORM_RTTHREAD)
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
 
 static uint32_t generate_node_id(void)
 {
-    /* Use tick count + fixed seed for a pseudo-unique ID */
     return 0x52540000 | (claw_tick_ms() & 0xFFFF);
 }
 
