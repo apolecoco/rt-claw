@@ -92,8 +92,8 @@ jobs:
         if: ${{ steps.secrets.outputs.enabled == 'true' }}
         env:
           RTCLAW_AI_API_KEY: ${{ secrets.RTCLAW_AI_API_KEY }}
-          RTCLAW_AI_API_URL: ${{ vars.RTCLAW_AI_API_URL }}
-          RTCLAW_AI_MODEL: ${{ vars.RTCLAW_AI_MODEL }}
+          RTCLAW_AI_API_URL: ${{ secrets.RTCLAW_AI_API_URL }}
+          RTCLAW_AI_MODEL: ${{ secrets.RTCLAW_AI_MODEL }}
           RTCLAW_FEISHU_APP_ID: ${{ secrets.RTCLAW_FEISHU_APP_ID }}
           RTCLAW_FEISHU_APP_SECRET: ${{ secrets.RTCLAW_FEISHU_APP_SECRET }}
         run: |
