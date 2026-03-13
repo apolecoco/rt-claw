@@ -1030,10 +1030,7 @@ window.flashFirmware = async function() {
                 if (written >= total) partsDone = fileIndex + 1;
             },
             calculateMD5Hash: function(image) {
-                const latin1 = Array.from(image, function(b) {
-                    return String.fromCharCode(b);
-                }).join('');
-                return CryptoJS.MD5(CryptoJS.enc.Latin1.parse(latin1)).toString();
+                return CryptoJS.MD5(CryptoJS.lib.WordArray.create(image)).toString();
             },
         });
 
