@@ -20,8 +20,8 @@ fi
 qemu-system-arm --version
 exec qemu-system-arm \
     -M vexpress-a9 \
-    -smp cpus=2 \
+    -smp cpus=1 \
     -kernel rtthread.bin \
-    -serial stdio \
+    -nographic \
     -sd sd.bin \
-    -show-cursor
+    -nic user,model=lan9118
