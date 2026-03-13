@@ -70,16 +70,11 @@ idf.py build                       # link into final firmware
 
 ## Run on QEMU
 
-### Method 1: Launch script (recommended)
+### Method 1: Makefile (recommended)
 
 ```bash
-./tools/sim-run.sh -M esp32c3-qemu             # serial only
-./tools/sim-run.sh -M esp32c3-qemu --graphics  # with LCD display window
-```
-
-Enable tab completion (bash/zsh):
-```bash
-eval "$(tools/sim-run.sh --setup-completion)"
+make run-esp32c3-qemu                  # serial only
+make run-esp32c3-qemu GRAPHICS=1      # with LCD display window
 ```
 
 ### Method 2: idf.py wrapper
@@ -130,7 +125,7 @@ idf.py gdb
 
 ```bash
 # Terminal 1
-./tools/sim-run.sh -M esp32c3-qemu -g
+make run-esp32c3-qemu GDB=1
 
 # Terminal 2
 cd platform/esp32c3-qemu

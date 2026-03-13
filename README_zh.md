@@ -155,7 +155,7 @@ idf.py menuconfig
 make esp32c3-qemu
 
 # 在 QEMU 上运行
-./tools/sim-run.sh -M esp32c3-qemu
+make run-esp32c3-qemu
 
 # 或烧录到真实硬件（未测试）
 idf.py -p /dev/ttyUSB0 flash monitor
@@ -178,7 +178,7 @@ cd platform/vexpress-a9-qemu && scons -j$(nproc)
 python3 tools/api-proxy.py https://api.anthropic.com &
 
 # 运行
-./tools/sim-run.sh -M vexpress-a9-qemu
+make run-vexpress-a9-qemu
 ```
 
 ## 项目结构
@@ -213,7 +213,6 @@ rt-claw/
 │   ├── gen-esp32c3-cross.py    # 从 ESP-IDF 自动生成 Meson 交叉编译文件
 │   └── ...
 └── tools/
-    ├── sim-run.sh              # 统一 QEMU 启动器（-M vexpress-a9-qemu / -M esp32c3-qemu）
     ├── api-proxy.py             # HTTP→HTTPS 代理（RT-Thread QEMU 无 TLS）
     └── ...
 ```
