@@ -30,6 +30,14 @@ jobs:
       - name: Copy images to website
         run: cp -r images/ website/img/
 
+      - name: Download latest firmware (if available)
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          workflow: build-firmware.yml
+          name: esp32s3-firmware
+          path: website/firmware/
+          if_no_artifact_found: warn
+
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3
