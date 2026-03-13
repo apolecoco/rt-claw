@@ -46,38 +46,50 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Validate integration secrets
+      - name: Detect integration secrets
+        id: secrets
         env:
           RTCLAW_AI_API_KEY: ${{ secrets.RTCLAW_AI_API_KEY }}
           RTCLAW_FEISHU_APP_ID: ${{ secrets.RTCLAW_FEISHU_APP_ID }}
           RTCLAW_FEISHU_APP_SECRET: ${{ secrets.RTCLAW_FEISHU_APP_SECRET }}
         run: |
+          missing=0
           for key in RTCLAW_AI_API_KEY RTCLAW_FEISHU_APP_ID RTCLAW_FEISHU_APP_SECRET; do
             if [ -z "${!key:-}" ]; then
-              echo "::error::Missing required secret: ${key}"
-              exit 1
+              echo "::notice::Missing integration secret: ${key}"
+              missing=1
             fi
           done
+          if [ "$missing" -eq 1 ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
 
       - name: Install system dependencies
+        if: ${{ steps.secrets.outputs.enabled == 'true' }}
         run: scripts/ci/install-system-deps.sh qemu
 
       - name: Cache ESP-IDF source
+        if: ${{ steps.secrets.outputs.enabled == 'true' }}
         uses: actions/cache@v4
         with:
           path: ~/esp/esp-idf
           key: esp-idf-src-v5.4-${{ runner.os }}
 
       - name: Cache ESP-IDF tools
+        if: ${{ steps.secrets.outputs.enabled == 'true' }}
         uses: actions/cache@v4
         with:
           path: ~/.espressif
           key: esp-idf-tools-v5.4-${{ runner.os }}
 
       - name: Ensure ESP-IDF environment
+        if: ${{ steps.secrets.outputs.enabled == 'true' }}
         run: scripts/ci/setup-esp-idf.sh "${{ matrix.esp_targets }}" "${{ matrix.qemu_tools }}"
 
       - name: Run online integration smoke
+        if: ${{ steps.secrets.outputs.enabled == 'true' }}
         env:
           RTCLAW_AI_API_KEY: ${{ secrets.RTCLAW_AI_API_KEY }}
           RTCLAW_AI_API_URL: ${{ vars.RTCLAW_AI_API_URL }}
@@ -91,7 +103,7 @@ jobs:
           scripts/ci/qemu-smoke.sh "${{ matrix.target }}" online
 
       - name: Upload integration logs
-        if: always()
+        if: ${{ always() && steps.secrets.outputs.enabled == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.target }}-online

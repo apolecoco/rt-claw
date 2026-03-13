@@ -21,6 +21,8 @@ packages=(
     libusb-1.0-0
     meson
     scons
+    gcc-arm-none-eabi
+    libnewlib-arm-none-eabi
 )
 
 if [ "$mode" = "qemu" ]; then
