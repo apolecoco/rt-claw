@@ -21,6 +21,7 @@
 #endif
 
 #ifdef CONFIG_RTCLAW_SHELL_ENABLE
+#include "shell_cmd.h"
 #include "services/ai/ai_memory.h"
 #include "driver/uart.h"
 #ifdef CONFIG_RTCLAW_SKILL_ENABLE
@@ -120,45 +121,28 @@ static int tokenize(char *line, char **argv, int max_args)
 
 /* ---- Slash command handlers ---- */
 
-static void cmd_help(void)
-{
-    printf("  /help                    Show this help\n");
-    printf("  /log [on|off]            Toggle log output\n");
-    printf("  /history                 Show conversation message count\n");
-    printf("  /clear                   Clear conversation memory\n");
-    printf("  /ai_set key|url|model <v> Set AI config (NVS)\n");
-    printf("  /ai_status               Show AI config\n");
-    printf("  /feishu_set <id> <secret> Set Feishu creds (NVS)\n");
-    printf("  /feishu_status           Show Feishu config\n");
-#ifdef CONFIG_RTCLAW_SKILL_ENABLE
-    printf("  /skill [name] [args]     List or execute a skill\n");
-#endif
-#ifdef CONFIG_RTCLAW_SCHED_ENABLE
-    printf("  /sched                   List scheduled tasks\n");
-#endif
-#ifdef CONFIG_RTCLAW_SWARM_ENABLE
-    printf("  /nodes                   Show swarm node table\n");
-#endif
-    printf("  /remember <key> <val>    Save to long-term memory\n");
-    printf("  /forget <key>            Delete from long-term memory\n");
-    printf("  /memories                List long-term memories\n");
-    printf("\n  Anything else is sent directly to AI.\n");
-}
+static void cmd_help(int argc, char **argv);
 
-static void cmd_history(void)
+static void cmd_history(int argc, char **argv)
 {
+    (void)argc;
+    (void)argv;
     printf("Conversation memory: %d messages\n", ai_memory_count());
 }
 
-static void cmd_clear(void)
+static void cmd_clear(int argc, char **argv)
 {
+    (void)argc;
+    (void)argv;
     ai_memory_clear();
     printf("Conversation memory cleared.\n");
 }
 
 #ifdef CONFIG_RTCLAW_SCHED_ENABLE
-static void cmd_sched(void)
+static void cmd_sched(int argc, char **argv)
 {
+    (void)argc;
+    (void)argv;
     sched_list();
 }
 #endif
@@ -227,8 +211,10 @@ static void cmd_forget(int argc, char **argv)
     }
 }
 
-static void cmd_memories(void)
+static void cmd_memories(int argc, char **argv)
 {
+    (void)argc;
+    (void)argv;
     ai_ltm_list();
 }
 
@@ -249,8 +235,10 @@ static void cmd_log(int argc, char **argv)
 }
 
 #ifdef CONFIG_RTCLAW_SWARM_ENABLE
-static void cmd_nodes(void)
+static void cmd_nodes(int argc, char **argv)
 {
+    (void)argc;
+    (void)argv;
     swarm_list_nodes();
 }
 #endif
@@ -335,11 +323,13 @@ static void cmd_ai_set(int argc, char **argv)
     }
 }
 
-static void cmd_ai_status(void)
+static void cmd_ai_status(int argc, char **argv)
 {
     const char *key = ai_get_api_key();
     int klen = strlen(key);
 
+    (void)argc;
+    (void)argv;
     printf("AI Engine:\n");
     printf("  API Key: %s\n",
            klen == 0 ? "(not set)" :
@@ -362,14 +352,48 @@ static void cmd_feishu_set(int argc, char **argv)
     printf("Feishu credentials saved (reboot to apply).\n");
 }
 
-static void cmd_feishu_status(void)
+static void cmd_feishu_status(int argc, char **argv)
 {
     const char *id = feishu_get_app_id();
 
+    (void)argc;
+    (void)argv;
     printf("Feishu:\n");
     printf("  App ID:     %s\n", id[0] ? id : "(not set)");
     printf("  App Secret: %s\n",
            feishu_get_app_secret()[0] ? "****" : "(not set)");
+}
+
+/* ---- Command table ---- */
+
+static const shell_cmd_t s_commands[] = {
+    SHELL_CMD("/help",          cmd_help,          "Show this help"),
+    SHELL_CMD("/log",           cmd_log,           "Toggle log [on|off]"),
+    SHELL_CMD("/history",       cmd_history,       "Show conversation count"),
+    SHELL_CMD("/clear",         cmd_clear,         "Clear conversation memory"),
+    SHELL_CMD("/ai_set",        cmd_ai_set,        "Set AI config (NVS)"),
+    SHELL_CMD("/ai_status",     cmd_ai_status,     "Show AI config"),
+    SHELL_CMD("/feishu_set",    cmd_feishu_set,    "Set Feishu creds (NVS)"),
+    SHELL_CMD("/feishu_status", cmd_feishu_status, "Show Feishu config"),
+#ifdef CONFIG_RTCLAW_SKILL_ENABLE
+    SHELL_CMD("/skill",         cmd_skill,         "List or execute a skill"),
+#endif
+#ifdef CONFIG_RTCLAW_SCHED_ENABLE
+    SHELL_CMD("/sched",         cmd_sched,         "List scheduled tasks"),
+#endif
+    SHELL_CMD("/remember",      cmd_remember,      "Save to long-term memory"),
+    SHELL_CMD("/forget",        cmd_forget,        "Delete from long-term memory"),
+    SHELL_CMD("/memories",      cmd_memories,      "List long-term memories"),
+#ifdef CONFIG_RTCLAW_SWARM_ENABLE
+    SHELL_CMD("/nodes",         cmd_nodes,         "Show swarm node table"),
+#endif
+};
+
+static void cmd_help(int argc, char **argv)
+{
+    (void)argc;
+    (void)argv;
+    shell_print_help(s_commands, SHELL_CMD_COUNT(s_commands));
 }
 
 /* Dispatch a /command */
@@ -381,45 +405,9 @@ static void dispatch_command(char *line)
     if (argc == 0) {
         return;
     }
-
-    const char *cmd = argv[0];
-
-    if (strcmp(cmd, "/help") == 0) {
-        cmd_help();
-    } else if (strcmp(cmd, "/log") == 0) {
-        cmd_log(argc, argv);
-    } else if (strcmp(cmd, "/history") == 0) {
-        cmd_history();
-    } else if (strcmp(cmd, "/clear") == 0) {
-        cmd_clear();
-    } else if (strcmp(cmd, "/ai_set") == 0) {
-        cmd_ai_set(argc, argv);
-    } else if (strcmp(cmd, "/ai_status") == 0) {
-        cmd_ai_status();
-    } else if (strcmp(cmd, "/feishu_set") == 0) {
-        cmd_feishu_set(argc, argv);
-    } else if (strcmp(cmd, "/feishu_status") == 0) {
-        cmd_feishu_status();
-#ifdef CONFIG_RTCLAW_SCHED_ENABLE
-    } else if (strcmp(cmd, "/sched") == 0) {
-        cmd_sched();
-#endif
-#ifdef CONFIG_RTCLAW_SKILL_ENABLE
-    } else if (strcmp(cmd, "/skill") == 0) {
-        cmd_skill(argc, argv);
-#endif
-    } else if (strcmp(cmd, "/remember") == 0) {
-        cmd_remember(argc, argv);
-    } else if (strcmp(cmd, "/forget") == 0) {
-        cmd_forget(argc, argv);
-    } else if (strcmp(cmd, "/memories") == 0) {
-        cmd_memories();
-#ifdef CONFIG_RTCLAW_SWARM_ENABLE
-    } else if (strcmp(cmd, "/nodes") == 0) {
-        cmd_nodes();
-#endif
-    } else {
-        printf("Unknown command: %s (type /help)\n", cmd);
+    if (!shell_dispatch(s_commands, SHELL_CMD_COUNT(s_commands),
+                        argc, argv)) {
+        printf("Unknown command: %s (type /help)\n", argv[0]);
     }
 }
 
