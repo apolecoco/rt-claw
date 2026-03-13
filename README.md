@@ -157,6 +157,10 @@ idf.py -C platform/esp32s3 -p /dev/ttyUSB0 flash monitor
 | Command | Description |
 |---------|-------------|
 | *(direct input)* | Send message to AI |
+| `/ai_set key\|url\|model <v>` | Set AI API config (persisted to NVS) |
+| `/ai_status` | Show current AI config |
+| `/feishu_set <id> <secret>` | Set Feishu credentials (reboot to apply) |
+| `/feishu_status` | Show Feishu config |
 | `/wifi_set <SSID> <PASS>` | Save WiFi credentials to NVS |
 | `/wifi_status` | Show connection state and IP |
 | `/wifi_scan` | Scan nearby access points |

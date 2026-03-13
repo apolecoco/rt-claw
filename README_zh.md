@@ -154,6 +154,10 @@ idf.py -C platform/esp32s3 -p /dev/ttyUSB0 flash monitor
 | 命令 | 说明 |
 |------|------|
 | *（直接输入）* | 发送消息给 AI |
+| `/ai_set key\|url\|model <值>` | 设置 AI API 配置（持久化到 NVS） |
+| `/ai_status` | 查看当前 AI 配置 |
+| `/feishu_set <id> <secret>` | 设置飞书凭据（重启生效） |
+| `/feishu_status` | 查看飞书配置 |
 | `/wifi_set <SSID> <密码>` | 保存 WiFi 凭据到 NVS |
 | `/wifi_status` | 查看连接状态和 IP |
 | `/wifi_scan` | 扫描附近热点 |

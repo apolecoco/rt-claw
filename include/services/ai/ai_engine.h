@@ -20,6 +20,19 @@ void ai_set_status_cb(ai_status_cb_t cb);
 int ai_engine_init(void);
 
 /**
+ * Runtime configuration — update API credentials without recompiling.
+ * New values take effect on the next ai_chat() call.
+ * Caller is responsible for NVS persistence (platform-specific).
+ */
+void ai_set_api_key(const char *key);
+void ai_set_api_url(const char *url);
+void ai_set_model(const char *model);
+
+const char *ai_get_api_key(void);
+const char *ai_get_api_url(void);
+const char *ai_get_model(void);
+
+/**
  * Set channel hint appended to the system prompt.
  * Call before ai_chat() to tell the model which channel is active
  * (e.g. "Feishu IM", "serial console").  Pass NULL to clear.

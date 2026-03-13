@@ -18,10 +18,18 @@
 
 #define TAG "ai"
 
-#define AI_API_KEY      CONFIG_RTCLAW_AI_API_KEY
-#define AI_API_URL      CONFIG_RTCLAW_AI_API_URL
-#define AI_MODEL        CONFIG_RTCLAW_AI_MODEL
 #define AI_MAX_TOKENS   CONFIG_RTCLAW_AI_MAX_TOKENS
+#define AI_KEY_MAX      128
+#define AI_URL_MAX      256
+#define AI_MODEL_MAX    64
+
+/*
+ * Mutable config buffers — initialized from compile-time defaults,
+ * overridden at runtime via ai_set_*() (e.g. from NVS).
+ */
+static char s_api_key[AI_KEY_MAX];
+static char s_api_url[AI_URL_MAX];
+static char s_model[AI_MODEL_MAX];
 
 #ifdef CONFIG_RTCLAW_AI_CONTEXT_SIZE
 #define RESP_BUF_SIZE      CONFIG_RTCLAW_AI_CONTEXT_SIZE
@@ -85,7 +93,7 @@ static cJSON *do_api_call(cJSON *req_body)
 
     claw_net_header_t headers[] = {
         { "Content-Type",      "application/json" },
-        { "x-api-key",         AI_API_KEY },
+        { "x-api-key",         s_api_key },
         { "anthropic-version", "2023-06-01" },
     };
 
@@ -99,7 +107,7 @@ static cJSON *do_api_call(cJSON *req_body)
         }
 
         size_t resp_len = 0;
-        int status = claw_net_post(AI_API_URL, headers, 3,
+        int status = claw_net_post(s_api_url, headers, 3,
                                     body_str, strlen(body_str),
                                     resp_buf, RESP_BUF_SIZE, &resp_len);
 
@@ -138,7 +146,7 @@ static cJSON *build_request(const char *system_prompt,
                             cJSON *messages, cJSON *tools)
 {
     cJSON *req = cJSON_CreateObject();
-    cJSON_AddStringToObject(req, "model", AI_MODEL);
+    cJSON_AddStringToObject(req, "model", s_model);
     cJSON_AddNumberToObject(req, "max_tokens", AI_MAX_TOKENS);
     cJSON_AddStringToObject(req, "system", system_prompt);
 
@@ -329,7 +337,7 @@ int ai_chat(const char *user_msg, char *reply, size_t reply_size)
         return CLAW_ERROR;
     }
 
-    if (strlen(AI_API_KEY) == 0) {
+    if (strlen(s_api_key) == 0) {
         snprintf(reply, reply_size, "[no API key configured]");
         return CLAW_ERROR;
     }
@@ -381,7 +389,7 @@ int ai_chat_raw(const char *prompt, char *reply, size_t reply_size)
         return CLAW_ERROR;
     }
 
-    if (strlen(AI_API_KEY) == 0) {
+    if (strlen(s_api_key) == 0) {
         snprintf(reply, reply_size, "[no API key configured]");
         return CLAW_ERROR;
     }
@@ -424,8 +432,52 @@ int ai_chat_raw(const char *prompt, char *reply, size_t reply_size)
     return ret;
 }
 
+/* ---- Runtime config setters/getters ---- */
+
+void ai_set_api_key(const char *key)
+{
+    if (key) {
+        snprintf(s_api_key, sizeof(s_api_key), "%s", key);
+    }
+}
+
+void ai_set_api_url(const char *url)
+{
+    if (url) {
+        snprintf(s_api_url, sizeof(s_api_url), "%s", url);
+    }
+}
+
+void ai_set_model(const char *model)
+{
+    if (model) {
+        snprintf(s_model, sizeof(s_model), "%s", model);
+    }
+}
+
+const char *ai_get_api_key(void)  { return s_api_key; }
+const char *ai_get_api_url(void)  { return s_api_url; }
+const char *ai_get_model(void)    { return s_model; }
+
 int ai_engine_init(void)
 {
+    /*
+     * Initialize from compile-time defaults (may be overridden
+     * by platform-specific NVS load before this call).
+     */
+    if (s_api_key[0] == '\0') {
+        snprintf(s_api_key, sizeof(s_api_key),
+                 "%s", CONFIG_RTCLAW_AI_API_KEY);
+    }
+    if (s_api_url[0] == '\0') {
+        snprintf(s_api_url, sizeof(s_api_url),
+                 "%s", CONFIG_RTCLAW_AI_API_URL);
+    }
+    if (s_model[0] == '\0') {
+        snprintf(s_model, sizeof(s_model),
+                 "%s", CONFIG_RTCLAW_AI_MODEL);
+    }
+
     s_api_lock = claw_mutex_create("ai_api");
     if (!s_api_lock) {
         CLAW_LOGE(TAG, "mutex create failed");
@@ -439,12 +491,12 @@ int ai_engine_init(void)
         CLAW_LOGW(TAG, "ltm init failed");
     }
 
-    if (strlen(AI_API_KEY) == 0) {
+    if (strlen(s_api_key) == 0) {
         CLAW_LOGW(TAG, "no API key configured");
         claw_lcd_status("No API key configured");
     } else {
         CLAW_LOGI(TAG, "engine ready (model: %s, tools: %d)",
-                  AI_MODEL, claw_tools_count());
+                  s_model, claw_tools_count());
         claw_lcd_status("AI ready - waiting for input");
     }
     return CLAW_OK;

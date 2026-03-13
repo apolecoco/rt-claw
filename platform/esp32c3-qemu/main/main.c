@@ -9,12 +9,14 @@
 #include "claw_os.h"
 #include "claw_init.h"
 #include "services/ai/ai_engine.h"
+#include "services/im/feishu.h"
 
 #include <stdio.h>
 #include <string.h>
 
 #ifdef CLAW_PLATFORM_ESP_IDF
 #include "nvs_flash.h"
+#include "nvs.h"
 #include "esp_log.h"
 #endif
 
@@ -124,6 +126,10 @@ static void cmd_help(void)
     printf("  /log [on|off]            Toggle log output\n");
     printf("  /history                 Show conversation message count\n");
     printf("  /clear                   Clear conversation memory\n");
+    printf("  /ai_set key|url|model <v> Set AI config (NVS)\n");
+    printf("  /ai_status               Show AI config\n");
+    printf("  /feishu_set <id> <secret> Set Feishu creds (NVS)\n");
+    printf("  /feishu_status           Show Feishu config\n");
 #ifdef CONFIG_RTCLAW_SKILL_ENABLE
     printf("  /skill [name] [args]     List or execute a skill\n");
 #endif
@@ -249,6 +255,123 @@ static void cmd_nodes(void)
 }
 #endif
 
+/* ---- NVS config helpers ---- */
+
+#define NVS_NS_AI     "ai_config"
+#define NVS_NS_FEISHU "feishu_cfg"
+
+static void nvs_config_load(void)
+{
+    nvs_handle_t nvs;
+    char buf[256];
+    size_t len;
+
+    if (nvs_open(NVS_NS_AI, NVS_READONLY, &nvs) == ESP_OK) {
+        len = sizeof(buf);
+        if (nvs_get_str(nvs, "api_key", buf, &len) == ESP_OK) {
+            ai_set_api_key(buf);
+        }
+        len = sizeof(buf);
+        if (nvs_get_str(nvs, "api_url", buf, &len) == ESP_OK) {
+            ai_set_api_url(buf);
+        }
+        len = sizeof(buf);
+        if (nvs_get_str(nvs, "model", buf, &len) == ESP_OK) {
+            ai_set_model(buf);
+        }
+        nvs_close(nvs);
+    }
+
+    if (nvs_open(NVS_NS_FEISHU, NVS_READONLY, &nvs) == ESP_OK) {
+        len = sizeof(buf);
+        if (nvs_get_str(nvs, "app_id", buf, &len) == ESP_OK) {
+            feishu_set_app_id(buf);
+        }
+        len = sizeof(buf);
+        if (nvs_get_str(nvs, "app_secret", buf, &len) == ESP_OK) {
+            feishu_set_app_secret(buf);
+        }
+        nvs_close(nvs);
+    }
+}
+
+static void nvs_save_str(const char *ns, const char *key, const char *val)
+{
+    nvs_handle_t nvs;
+
+    if (nvs_open(ns, NVS_READWRITE, &nvs) != ESP_OK) {
+        printf("[error] NVS open failed\n");
+        return;
+    }
+    nvs_set_str(nvs, key, val);
+    nvs_commit(nvs);
+    nvs_close(nvs);
+}
+
+static void cmd_ai_set(int argc, char **argv)
+{
+    if (argc < 3) {
+        printf("Usage: /ai_set key|url|model <value>\n");
+        return;
+    }
+
+    const char *field = argv[1];
+    const char *value = argv[2];
+
+    if (strcmp(field, "key") == 0) {
+        ai_set_api_key(value);
+        nvs_save_str(NVS_NS_AI, "api_key", value);
+        printf("API key saved (effective immediately).\n");
+    } else if (strcmp(field, "url") == 0) {
+        ai_set_api_url(value);
+        nvs_save_str(NVS_NS_AI, "api_url", value);
+        printf("API URL saved: %s\n", value);
+    } else if (strcmp(field, "model") == 0) {
+        ai_set_model(value);
+        nvs_save_str(NVS_NS_AI, "model", value);
+        printf("Model saved: %s\n", value);
+    } else {
+        printf("Unknown field: %s (use key|url|model)\n", field);
+    }
+}
+
+static void cmd_ai_status(void)
+{
+    const char *key = ai_get_api_key();
+    int klen = strlen(key);
+
+    printf("AI Engine:\n");
+    printf("  API Key: %s\n",
+           klen == 0 ? "(not set)" :
+           klen <= 8 ? "****" : "****...****");
+    printf("  API URL: %s\n", ai_get_api_url());
+    printf("  Model:   %s\n", ai_get_model());
+}
+
+static void cmd_feishu_set(int argc, char **argv)
+{
+    if (argc < 3) {
+        printf("Usage: /feishu_set <app_id> <app_secret>\n");
+        return;
+    }
+
+    feishu_set_app_id(argv[1]);
+    feishu_set_app_secret(argv[2]);
+    nvs_save_str(NVS_NS_FEISHU, "app_id", argv[1]);
+    nvs_save_str(NVS_NS_FEISHU, "app_secret", argv[2]);
+    printf("Feishu credentials saved (reboot to apply).\n");
+}
+
+static void cmd_feishu_status(void)
+{
+    const char *id = feishu_get_app_id();
+
+    printf("Feishu:\n");
+    printf("  App ID:     %s\n", id[0] ? id : "(not set)");
+    printf("  App Secret: %s\n",
+           feishu_get_app_secret()[0] ? "****" : "(not set)");
+}
+
 /* Dispatch a /command */
 static void dispatch_command(char *line)
 {
@@ -269,6 +392,14 @@ static void dispatch_command(char *line)
         cmd_history();
     } else if (strcmp(cmd, "/clear") == 0) {
         cmd_clear();
+    } else if (strcmp(cmd, "/ai_set") == 0) {
+        cmd_ai_set(argc, argv);
+    } else if (strcmp(cmd, "/ai_status") == 0) {
+        cmd_ai_status();
+    } else if (strcmp(cmd, "/feishu_set") == 0) {
+        cmd_feishu_set(argc, argv);
+    } else if (strcmp(cmd, "/feishu_status") == 0) {
+        cmd_feishu_status();
 #ifdef CONFIG_RTCLAW_SCHED_ENABLE
     } else if (strcmp(cmd, "/sched") == 0) {
         cmd_sched();
@@ -409,6 +540,9 @@ void app_main(void)
     claw_log_set_enabled(1);
 #endif
 #endif
+
+    /* Load runtime config from NVS */
+    nvs_config_load();
 
     claw_init();
 

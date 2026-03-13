@@ -35,8 +35,10 @@
 #include "esp_websocket_client.h"
 #include "cJSON.h"
 
-#define FEISHU_APP_ID       CONFIG_RTCLAW_FEISHU_APP_ID
-#define FEISHU_APP_SECRET   CONFIG_RTCLAW_FEISHU_APP_SECRET
+#define FEISHU_CRED_MAX     128
+
+static char s_app_id[FEISHU_CRED_MAX];
+static char s_app_secret[FEISHU_CRED_MAX];
 
 #define WS_EP_URL    "https://open.feishu.cn/callback/ws/endpoint"
 #define TOKEN_URL \
@@ -459,7 +461,7 @@ static int refresh_token(void)
     char body[256];
     snprintf(body, sizeof(body),
              "{\"app_id\":\"%s\",\"app_secret\":\"%s\"}",
-             FEISHU_APP_ID, FEISHU_APP_SECRET);
+             s_app_id, s_app_secret);
 
     int ret = http_post_json(TOKEN_URL, NULL, body, resp, RESP_BUF_SIZE);
     if (ret != CLAW_OK) {
@@ -912,7 +914,7 @@ static int connect_ws(void)
     char body[256];
     snprintf(body, sizeof(body),
              "{\"AppID\":\"%s\",\"AppSecret\":\"%s\"}",
-             FEISHU_APP_ID, FEISHU_APP_SECRET);
+             s_app_id, s_app_secret);
 
     int ret = http_post_json(WS_EP_URL, NULL, body, resp, RESP_BUF_SIZE);
     if (ret != CLAW_OK) {
@@ -986,7 +988,7 @@ static void feishu_thread(void *arg)
 {
     (void)arg;
 
-    CLAW_LOGI(TAG, "service starting (app_id=%s)", FEISHU_APP_ID);
+    CLAW_LOGI(TAG, "service starting (app_id=%s)", s_app_id);
 
     /* Fetch tenant token first (needed for sending replies) */
     while (refresh_token() != CLAW_OK) {
@@ -1030,8 +1032,35 @@ static void feishu_thread(void *arg)
 /*  Public API                                                         */
 /* ------------------------------------------------------------------ */
 
+void feishu_set_app_id(const char *app_id)
+{
+    if (app_id) {
+        snprintf(s_app_id, sizeof(s_app_id), "%s", app_id);
+    }
+}
+
+void feishu_set_app_secret(const char *app_secret)
+{
+    if (app_secret) {
+        snprintf(s_app_secret, sizeof(s_app_secret), "%s", app_secret);
+    }
+}
+
+const char *feishu_get_app_id(void)     { return s_app_id; }
+const char *feishu_get_app_secret(void) { return s_app_secret; }
+
 int feishu_init(void)
 {
+    /* Initialize from compile-time defaults if not set via setter */
+    if (s_app_id[0] == '\0') {
+        snprintf(s_app_id, sizeof(s_app_id),
+                 "%s", CONFIG_RTCLAW_FEISHU_APP_ID);
+    }
+    if (s_app_secret[0] == '\0') {
+        snprintf(s_app_secret, sizeof(s_app_secret),
+                 "%s", CONFIG_RTCLAW_FEISHU_APP_SECRET);
+    }
+
     s_lock = claw_mutex_create("feishu");
     if (!s_lock) {
         return CLAW_ERROR;
@@ -1072,14 +1101,22 @@ int feishu_start(void)
 
 #else /* !CONFIG_RTCLAW_FEISHU_ENABLE */
 
-int feishu_init(void)  { return 0; }
-int feishu_start(void) { return 0; }
+int  feishu_init(void)  { return 0; }
+int  feishu_start(void) { return 0; }
+void feishu_set_app_id(const char *id)     { (void)id; }
+void feishu_set_app_secret(const char *s)  { (void)s; }
+const char *feishu_get_app_id(void)        { return ""; }
+const char *feishu_get_app_secret(void)    { return ""; }
 
 #endif /* CONFIG_RTCLAW_FEISHU_ENABLE */
 
 #else /* !CLAW_PLATFORM_ESP_IDF */
 
-int feishu_init(void)  { return 0; }
-int feishu_start(void) { return 0; }
+int  feishu_init(void)  { return 0; }
+int  feishu_start(void) { return 0; }
+void feishu_set_app_id(const char *id)     { (void)id; }
+void feishu_set_app_secret(const char *s)  { (void)s; }
+const char *feishu_get_app_id(void)        { return ""; }
+const char *feishu_get_app_secret(void)    { return ""; }
 
 #endif /* CLAW_PLATFORM_ESP_IDF */
