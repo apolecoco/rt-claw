@@ -1045,7 +1045,12 @@ window.flashFirmware = async function() {
                 if (written >= total) partsDone = fileIndex + 1;
             },
             calculateMD5Hash: function(image) {
-                return CryptoJS.MD5(CryptoJS.lib.WordArray.create(image)).toString();
+                var len = image.length;
+                var words = [];
+                for (var i = 0; i < len; i++) {
+                    words[i >>> 2] |= image[i] << (24 - (i % 4) * 8);
+                }
+                return CryptoJS.MD5(CryptoJS.lib.WordArray.create(words, len)).toString();
             },
         });
 
