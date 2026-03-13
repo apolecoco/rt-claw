@@ -32,7 +32,7 @@ typedef struct {
 /**
  * Initialize tool registry. Call once at startup.
  */
-void claw_tools_init(void);
+int claw_tools_init(void);
 
 /**
  * Register a tool. Returns CLAW_OK or CLAW_ERROR if full.

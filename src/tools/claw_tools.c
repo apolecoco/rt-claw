@@ -13,7 +13,7 @@
 static claw_tool_t s_tools[CLAW_TOOL_MAX];
 static int s_tool_count;
 
-void claw_tools_init(void)
+int claw_tools_init(void)
 {
     memset(s_tools, 0, sizeof(s_tools));
     s_tool_count = 0;
@@ -35,6 +35,7 @@ void claw_tools_init(void)
 #endif
 
     CLAW_LOGI(TAG, "%d tools registered", s_tool_count);
+    return CLAW_OK;
 }
 
 int claw_tool_register(const char *name, const char *description,

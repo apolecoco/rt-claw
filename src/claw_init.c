@@ -6,6 +6,7 @@
 #include "claw_os.h"
 #include "claw_config.h"
 #include "claw_init.h"
+#include "claw_service.h"
 #include "gateway.h"
 #include "net_service.h"
 #include "claw_tools.h"
@@ -25,6 +26,37 @@
 #ifdef CONFIG_CLAW_FEISHU_ENABLE
 #include "feishu.h"
 #endif
+
+#define TAG "init"
+
+/*
+ * Service table — defines boot order and lifecycle.
+ * Phase 1: all init() calls in order (dependencies flow top-to-bottom).
+ * Phase 2: start() for services that have a runtime phase.
+ */
+static const claw_service_t s_services[] = {
+    { "gateway",     gateway_init,      NULL,          NULL },
+#ifdef CONFIG_CLAW_SCHED_ENABLE
+    { "sched",       sched_init,        NULL,          NULL },
+#endif
+#ifdef CONFIG_CLAW_SWARM_ENABLE
+    { "swarm",       swarm_init,        swarm_start,   NULL },
+#endif
+    { "net",         net_service_init,  NULL,          NULL },
+#ifdef CONFIG_CLAW_LCD_ENABLE
+    { "lcd",         claw_lcd_init,     NULL,          NULL },
+#endif
+    { "tools",       claw_tools_init,   NULL,          NULL },
+    { "ai_engine",   ai_engine_init,    NULL,          NULL },
+#ifdef CONFIG_CLAW_SKILL_ENABLE
+    { "ai_skill",    ai_skill_init,     NULL,          NULL },
+#endif
+#ifdef CONFIG_CLAW_FEISHU_ENABLE
+    { "feishu",      feishu_init,       feishu_start,  NULL },
+#endif
+};
+
+#define SERVICE_COUNT (sizeof(s_services) / sizeof(s_services[0]))
 
 static void ai_boot_test_thread(void *arg)
 {
@@ -55,34 +87,22 @@ int claw_init(void)
     claw_log_raw("  +-----------------------------------------+\n");
     claw_log_raw("\n");
 
-    gateway_init();
+    /* Phase 1: initialize all services */
+    for (size_t i = 0; i < SERVICE_COUNT; i++) {
+        CLAW_LOGI(TAG, "init: %s", s_services[i].name);
+        int ret = s_services[i].init();
+        if (ret != CLAW_OK) {
+            CLAW_LOGW(TAG, "%s init returned %d", s_services[i].name, ret);
+        }
+    }
 
-#ifdef CONFIG_CLAW_SCHED_ENABLE
-    sched_init();
-#endif
-#ifdef CONFIG_CLAW_SWARM_ENABLE
-    swarm_init();
-#endif
-
-    net_service_init();
-
-#ifdef CONFIG_CLAW_SWARM_ENABLE
-    swarm_start();
-#endif
-#ifdef CONFIG_CLAW_LCD_ENABLE
-    claw_lcd_init();
-#endif
-
-    claw_tools_init();
-    ai_engine_init();
-
-#ifdef CONFIG_CLAW_SKILL_ENABLE
-    ai_skill_init();
-#endif
-#ifdef CONFIG_CLAW_FEISHU_ENABLE
-    feishu_init();
-    feishu_start();
-#endif
+    /* Phase 2: start services that have a runtime phase */
+    for (size_t i = 0; i < SERVICE_COUNT; i++) {
+        if (s_services[i].start) {
+            CLAW_LOGI(TAG, "start: %s", s_services[i].name);
+            s_services[i].start();
+        }
+    }
 
     /* AI connectivity test — run async to avoid blocking boot */
     claw_thread_create("ai_test", ai_boot_test_thread, NULL, 4096, 20);

@@ -10,8 +10,8 @@
  *   - RT-Thread:  CFLAGS in rtconfig.py
  */
 
-#ifndef __CLAW_CONFIG_H__
-#define __CLAW_CONFIG_H__
+#ifndef CLAW_CONFIG_H
+#define CLAW_CONFIG_H
 
 #define RT_CLAW_VERSION         "0.1.0"
 
@@ -52,4 +52,4 @@
 #define CONFIG_CLAW_AI_MEMORY_MAX_MSGS 20
 #endif
 
-#endif /* __CLAW_CONFIG_H__ */
+#endif /* CLAW_CONFIG_H */
