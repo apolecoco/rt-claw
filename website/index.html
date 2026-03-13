@@ -1050,7 +1050,13 @@ window.flashFirmware = async function() {
                 if (written >= total) partsDone = fileIndex + 1;
             },
             calculateMD5Hash: function(image) {
-                return md5(image);
+                /* image is a binary string; js-md5 treats strings as UTF-8,
+                   so convert back to Uint8Array for correct raw-byte hash */
+                var bytes = new Uint8Array(image.length);
+                for (var i = 0; i < image.length; i++) {
+                    bytes[i] = image.charCodeAt(i);
+                }
+                return md5(bytes);
             },
         });
 
