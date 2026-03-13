@@ -37,11 +37,11 @@ Zero runtime overhead. No function pointers. No conditional compilation in core 
 
 ### Gateway (claw/core/gateway)
 
-Central message router inspired by OpenClaw's Gateway architecture.
+Inter-node message routing skeleton for swarm communication.
 
 - Thread-safe message queue (via `claw_mq_*`)
-- Channel-based routing (source -> destination)
 - Message types: DATA, CMD, EVENT, SWARM
+- Routing logic not yet implemented — messages are logged only
 
 ### Swarm Service (claw/services/swarm)
 

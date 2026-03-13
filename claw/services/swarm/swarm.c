@@ -9,7 +9,6 @@
 #include "claw_config.h"
 #include "claw_net.h"
 #include "services/swarm/swarm.h"
-#include "core/gateway.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -60,13 +59,8 @@ static claw_timer_t s_hb_timer;
 
 static void notify_node_event(uint32_t node_id, int joined)
 {
-    struct gateway_msg msg;
-    memset(&msg, 0, sizeof(msg));
-    msg.type = GW_MSG_SWARM;
-    msg.len = snprintf((char *)msg.payload, sizeof(msg.payload),
-                       "node 0x%08x %s", (unsigned)node_id,
-                       joined ? "joined" : "left");
-    gateway_send(&msg);
+    CLAW_LOGI(TAG, "node 0x%08x %s",
+              (unsigned)node_id, joined ? "joined" : "left");
 }
 
 static int find_or_add_node(uint32_t node_id)

@@ -125,12 +125,12 @@ them. No handler registration, no dispatch table, no subscriber pattern.
 Services bypass it completely — `feishu.c` calls `ai_chat()` directly.
 The `dst_channel` field in `struct gateway_msg` is unused.
 
-**Resolution:** Adopted Option 2 — gateway is now a lightweight event
-bus with `gateway_subscribe(type, handler, arg)` for handler registration
-and type-based dispatch. Removed unused `src_channel` / `dst_channel`
-fields. `CLAW_GW_MAX_HANDLERS` moved to `claw_config.h` for per-platform
-tuning. Static handler table (no heap allocation) suits
-resource-constrained devices.
+**Resolution:** Stripped to minimal skeleton for future inter-node
+routing. Removed event-bus machinery (subscribe, dispatch, handler table,
+mutex) and unused `src_channel` / `dst_channel` fields. Gateway now only
+keeps a message queue and thread — routing logic will be added when swarm
+multi-node communication is implemented. Swarm node events use direct
+logging instead of gateway dispatch.
 
 #### P2-3: No Unified Service Interface
 

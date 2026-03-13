@@ -37,11 +37,11 @@ claw/*.c  --->  #include "claw_os.h"  (编译时接口)
 
 ### 网关（claw/core/gateway）
 
-受 OpenClaw Gateway 架构启发的中央消息路由器。
+面向蜂群通信的节点间消息路由骨架。
 
 - 线程安全的消息队列（通过 `claw_mq_*`）
-- 基于通道的路由（源 -> 目标）
 - 消息类型：DATA、CMD、EVENT、SWARM
+- 路由逻辑尚未实现——当前仅记录日志
 
 ### 蜂群服务（claw/services/swarm）
 

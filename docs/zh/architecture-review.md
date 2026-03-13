@@ -96,11 +96,11 @@ TimerHandle_t t = xTimerCreate(name, pdMS_TO_TICKS(period_ms),
 **问题：** `gateway.c` 收到消息只打日志，不做路由。无 handler 注册、
 无分发表、无订阅模式。服务之间直接调用，绕过 Gateway。
 
-**已解决：** 采用方案 2 — Gateway 改为轻量事件总线，提供
-`gateway_subscribe(type, handler, arg)` 注册接口和按类型分发。
-移除未使用的 `src_channel` / `dst_channel` 字段。
-`CLAW_GW_MAX_HANDLERS` 移至 `claw_config.h` 支持平台级调整。
-静态 handler 表（无堆分配），适合资源受限设备。
+**已解决：** 精简为节点间路由最小骨架。移除事件总线机制
+（subscribe、dispatch、handler 表、mutex）和未使用的
+`src_channel` / `dst_channel` 字段。Gateway 仅保留消息队列和
+线程——路由逻辑待 swarm 多节点通信实现时添加。Swarm 节点
+事件改为直接日志输出。
 
 #### P2-3：无统一服务接口
 
