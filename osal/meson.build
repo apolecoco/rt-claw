@@ -3,7 +3,10 @@ osal_inc = include_directories('include')
 osal_backend = get_option('osal')
 
 if osal_backend == 'rtthread'
-    osal_src = files('rtthread/claw_os_rtthread.c')
+    osal_src = files(
+        'rtthread/claw_os_rtthread.c',
+        'rtthread/claw_net_rtthread.c',
+    )
     osal_lib = static_library('osal', osal_src,
         include_directories: [osal_inc] + platform_incs,
         c_args: platform_defs,
@@ -13,7 +16,10 @@ if osal_backend == 'rtthread'
         include_directories: osal_inc,
     )
 elif osal_backend == 'freertos'
-    osal_src = files('freertos/claw_os_freertos.c')
+    osal_src = files(
+        'freertos/claw_os_freertos.c',
+        'freertos/claw_net_freertos.c',
+    )
     osal_lib = static_library('osal', osal_src,
         include_directories: [osal_inc] + platform_incs,
         c_args: platform_defs,
