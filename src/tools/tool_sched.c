@@ -25,6 +25,7 @@
 #define SCHED_AI_MAX     4
 #define SCHED_PROMPT_MAX 256
 #define SCHED_REPLY_MAX  1024
+#define REPLY_TARGET_MAX 64
 #define WORKER_STACK     16384
 #define WORKER_PRIO      11
 
@@ -32,6 +33,8 @@ typedef struct {
     char prompt[SCHED_PROMPT_MAX];
     char reply[SCHED_REPLY_MAX];
     int  in_use;
+    sched_reply_fn_t reply_fn;
+    char reply_target[REPLY_TARGET_MAX];
 } sched_ai_ctx_t;
 
 static sched_ai_ctx_t s_ctx[SCHED_AI_MAX];
@@ -41,6 +44,32 @@ static claw_sem_t   s_worker_sem;
 static claw_mutex_t s_worker_lock;
 static sched_ai_ctx_t *s_pending_ctx;
 static int s_worker_busy; /* protected by s_worker_lock */
+
+/*
+ * Reply context — set by the caller (feishu / shell) before ai_chat()
+ * so that tool_schedule_task() can capture the destination.
+ * Protected by s_rctx_lock; read inside ai_chat() tool execution
+ * while s_api_lock is held, so races are practically impossible
+ * but we lock anyway for correctness.
+ */
+static claw_mutex_t      s_rctx_lock;
+static sched_reply_fn_t  s_rctx_fn;
+static char              s_rctx_target[REPLY_TARGET_MAX];
+
+void sched_set_reply_context(sched_reply_fn_t fn, const char *target)
+{
+    if (!s_rctx_lock) {
+        return;
+    }
+    claw_mutex_lock(s_rctx_lock, CLAW_WAIT_FOREVER);
+    s_rctx_fn = fn;
+    if (target) {
+        snprintf(s_rctx_target, sizeof(s_rctx_target), "%s", target);
+    } else {
+        s_rctx_target[0] = '\0';
+    }
+    claw_mutex_unlock(s_rctx_lock);
+}
 
 static sched_ai_ctx_t *ctx_alloc(void)
 {
@@ -85,9 +114,13 @@ static void ai_worker_thread(void *arg)
 
         if (ai_chat_raw(ctx->prompt, ctx->reply,
                         SCHED_REPLY_MAX) == CLAW_OK) {
-            printf("\n\033[0;33m<sched>\033[0m %s\n",
-                   ctx->reply);
-            fflush(stdout);
+            if (ctx->reply_fn) {
+                ctx->reply_fn(ctx->reply_target, ctx->reply);
+            } else {
+                printf("\n\033[0;33m<sched>\033[0m %s\n",
+                       ctx->reply);
+                fflush(stdout);
+            }
         }
 
         claw_mutex_lock(s_worker_lock, CLAW_WAIT_FOREVER);
@@ -155,6 +188,12 @@ static int tool_schedule_task(const cJSON *params, cJSON *result)
 
     snprintf(ctx->prompt, SCHED_PROMPT_MAX, "%s",
              prompt_j->valuestring);
+
+    /* Capture reply context set by the caller (feishu / shell) */
+    claw_mutex_lock(s_rctx_lock, CLAW_WAIT_FOREVER);
+    ctx->reply_fn = s_rctx_fn;
+    snprintf(ctx->reply_target, REPLY_TARGET_MAX, "%s", s_rctx_target);
+    claw_mutex_unlock(s_rctx_lock);
 
     if (sched_add(name, (uint32_t)interval_s * 1000, (int32_t)count,
                   sched_ai_callback, ctx) != CLAW_OK) {
@@ -225,9 +264,12 @@ void claw_tools_register_sched(void)
     memset(s_ctx, 0, sizeof(s_ctx));
     s_worker_busy = 0;
     s_pending_ctx = NULL;
+    s_rctx_fn = NULL;
+    s_rctx_target[0] = '\0';
 
     s_worker_sem = claw_sem_create("sched_w", 0);
     s_worker_lock = claw_mutex_create("sched_w");
+    s_rctx_lock = claw_mutex_create("sched_rc");
 
     claw_thread_create("sched_ai", ai_worker_thread, NULL,
                        WORKER_STACK, WORKER_PRIO);
@@ -247,6 +289,12 @@ void claw_tools_register_sched(void)
 
 void claw_tools_register_sched(void)
 {
+}
+
+void sched_set_reply_context(sched_reply_fn_t fn, const char *target)
+{
+    (void)fn;
+    (void)target;
 }
 
 #endif

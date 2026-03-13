@@ -91,6 +91,23 @@ void claw_tools_register_lcd(void);
 void claw_tools_register_sched(void);
 
 /**
+ * Scheduled-task reply callback.
+ * @param target  Opaque destination (e.g. Feishu chat_id)
+ * @param text    Reply text to deliver
+ */
+typedef void (*sched_reply_fn_t)(const char *target, const char *text);
+
+/**
+ * Set the reply context for the NEXT scheduled task registration.
+ * Call before ai_chat(); tool_schedule_task() captures the context
+ * so that subsequent scheduled firings route replies accordingly.
+ * Pass NULL to reset (replies go to serial console).
+ *
+ * Thread-safety: protected by an internal mutex.
+ */
+void sched_set_reply_context(sched_reply_fn_t fn, const char *target);
+
+/**
  * Register network tools (http_request).
  */
 void claw_tools_register_net(void);

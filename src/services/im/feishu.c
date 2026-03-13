@@ -17,6 +17,7 @@
 #include "claw_os.h"
 #include "feishu.h"
 #include "ai_engine.h"
+#include "claw_tools.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -573,6 +574,17 @@ static void add_reaction(const char *message_id, const char *emoji_type)
 }
 
 /* ------------------------------------------------------------------ */
+/*  Scheduled-task reply callback — routes results back to Feishu      */
+/* ------------------------------------------------------------------ */
+
+static void sched_reply_to_feishu(const char *target, const char *text)
+{
+    if (target && target[0] != '\0' && text && text[0] != '\0') {
+        send_reply(target, text);
+    }
+}
+
+/* ------------------------------------------------------------------ */
 /*  AI worker — run ai_chat() off the websocket callback stack         */
 /* ------------------------------------------------------------------ */
 
@@ -625,11 +637,19 @@ static void ai_worker_thread(void *arg)
             add_reaction(msg_id, "Typing");
         }
 
+        /*
+         * Set reply context so that any schedule_task created during
+         * this ai_chat call will route results back to this chat.
+         */
+        sched_set_reply_context(sched_reply_to_feishu, chat_id);
+
         CLAW_LOGI(TAG, "[%lu ms] ... ai_chat start: \"%s\"",
                   (unsigned long)claw_tick_ms(), text);
         int ret = ai_chat(text, reply, REPLY_BUF_SIZE);
         CLAW_LOGI(TAG, "[%lu ms] ... ai_chat done, ret=%d",
                   (unsigned long)claw_tick_ms(), ret);
+
+        sched_set_reply_context(NULL, NULL);
         if (ret == CLAW_OK && reply[0] != '\0') {
             CLAW_LOGI(TAG, "[%lu ms] >>> sending reply: \"%.120s%s\"",
                       (unsigned long)claw_tick_ms(), reply,
