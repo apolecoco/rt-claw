@@ -15,6 +15,8 @@ option('tool_system', type: 'boolean', value: true,
     description: 'Enable system info tool')
 option('tool_sched', type: 'boolean', value: true,
     description: 'Enable scheduler tool')
+option('tool_net', type: 'boolean', value: true,
+    description: 'Enable network (HTTP) tool')
 
 option('ai_api_key', type: 'string', value: '',
     description: 'AI API key (overrides CONFIG_CLAW_AI_API_KEY)')

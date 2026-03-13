@@ -30,6 +30,9 @@ void claw_tools_init(void)
 #ifdef CONFIG_CLAW_TOOL_SCHED
     claw_tools_register_sched();
 #endif
+#ifdef CONFIG_CLAW_TOOL_NET
+    claw_tools_register_net();
+#endif
 
     CLAW_LOGI(TAG, "%d tools registered", s_tool_count);
 }

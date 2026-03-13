@@ -83,6 +83,11 @@ void claw_tools_register_lcd(void);
 void claw_tools_register_sched(void);
 
 /**
+ * Register network tools (http_request).
+ */
+void claw_tools_register_net(void);
+
+/**
  * Initialize LCD panel (QEMU RGB framebuffer).
  * Call before claw_tools_init() so the panel is ready.
  */

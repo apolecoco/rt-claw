@@ -23,6 +23,7 @@ src_files = files(
     'tools/tool_lcd.c',
     'tools/tool_sched.c',
     'tools/tool_system.c',
+    'tools/tool_net.c',
 )
 
 # Feature flags
@@ -44,6 +45,9 @@ if get_option('tool_system')
 endif
 if get_option('tool_sched')
     feature_defs += '-DCONFIG_CLAW_TOOL_SCHED'
+endif
+if get_option('tool_net')
+    feature_defs += '-DCONFIG_CLAW_TOOL_NET'
 endif
 
 rtclaw_lib = static_library('rtclaw', src_files,

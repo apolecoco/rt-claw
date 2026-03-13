@@ -100,6 +100,12 @@ menu "rt-claw Configuration"
                 help
                     schedule_task, remove_task tools.
 
+            config CLAW_TOOL_NET
+                bool "Network (HTTP) tools"
+                default y
+                help
+                    http_request tool for GET/POST requests.
+
         endmenu
 
     endmenu
