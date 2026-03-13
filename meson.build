@@ -23,7 +23,7 @@ if osal_backend == 'rtthread'
         'vendor/rt-thread/components/finsh',
         'vendor/rt-thread/components/net/lwip/port',
         'vendor/rt-thread/components/net/lwip/port/netif',
-        'platform/qemu-a9-rtthread/drivers',
+        'platform/vexpress-a9-qemu/drivers',
         'vendor/rt-thread/components/libc/compilers/common/include',
         'vendor/rt-thread/components/libc/compilers/newlib',
         'vendor/rt-thread/components/libc/posix/io/poll',
@@ -36,7 +36,7 @@ if osal_backend == 'rtthread'
         'vendor/rt-thread/components/net/netdev/include',
         'vendor/rt-thread/components/net/lwip/lwip-2.1.2/src/include',
         'vendor/rt-thread/components/net/lwip/lwip-2.1.2/src/include/netif',
-        'platform/qemu-a9-rtthread',
+        'platform/vexpress-a9-qemu',
         is_system: true,
     )
 elif osal_backend == 'freertos'

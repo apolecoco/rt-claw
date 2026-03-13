@@ -167,18 +167,18 @@ idf.py -p /dev/ttyUSB0 flash monitor
 # 依赖：arm-none-eabi-gcc, qemu-system-arm, scons, meson, ninja
 
 # 统一构建
-make qemu-a9
+make vexpress-a9-qemu
 
 # 配置 API 密钥（可选）
-meson configure build/qemu-a9 -Dai_api_key='<your-key>'
-meson compile -C build/qemu-a9
-cd platform/qemu-a9-rtthread && scons -j$(nproc)
+meson configure build/vexpress-a9-qemu -Dai_api_key='<your-key>'
+meson compile -C build/vexpress-a9-qemu
+cd platform/vexpress-a9-qemu && scons -j$(nproc)
 
 # 启动 API 代理（RT-Thread 无 TLS，代理转发 HTTP→HTTPS）
 python3 tools/api-proxy.py https://api.anthropic.com &
 
 # 运行
-./tools/qemu-run.sh -M qemu-a9
+./tools/qemu-run.sh -M vexpress-a9-qemu
 ```
 
 ## 项目结构
@@ -187,7 +187,7 @@ python3 tools/api-proxy.py https://api.anthropic.com &
 rt-claw/
 ├── meson.build                  # Meson 构建定义（交叉编译 src + osal）
 ├── meson.options                # Meson 构建选项（OSAL 后端、功能开关、AI 配置）
-├── Makefile                     # 统一构建入口（make esp32c3-qemu / make qemu-a9）
+├── Makefile                     # 统一构建入口（make esp32c3-qemu / make vexpress-a9-qemu）
 ├── osal/                        # 操作系统抽象层
 │   ├── include/claw_os.h       #   统一 RTOS API
 │   ├── freertos/                #   FreeRTOS 实现
@@ -202,7 +202,7 @@ rt-claw/
 │   └── tools/                   #   Tool Use 框架（GPIO、系统信息、LCD）
 ├── platform/
 │   ├── esp32c3-qemu/            # ESP32-C3 QEMU（ESP-IDF, Meson + CMake）
-│   └── qemu-a9-rtthread/       # RT-Thread BSP（Meson + SCons）
+│   └── vexpress-a9-qemu/       # RT-Thread BSP（Meson + SCons）
 ├── vendor/
 │   ├── freertos/                # FreeRTOS-Kernel（子模块）
 │   └── rt-thread/               # RT-Thread（子模块）
@@ -213,7 +213,7 @@ rt-claw/
 │   ├── gen-esp32c3-cross.py    # 从 ESP-IDF 自动生成 Meson 交叉编译文件
 │   └── ...
 └── tools/
-    ├── qemu-run.sh              # 统一 QEMU 启动器（-M qemu-a9 / -M esp32c3-qemu）
+    ├── qemu-run.sh              # 统一 QEMU 启动器（-M vexpress-a9-qemu / -M esp32c3-qemu）
     ├── api-proxy.py             # HTTP→HTTPS 代理（RT-Thread QEMU 无 TLS）
     └── ...
 ```

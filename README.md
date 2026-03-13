@@ -172,18 +172,18 @@ idf.py -p /dev/ttyUSB0 flash monitor
 # Prerequisites: arm-none-eabi-gcc, qemu-system-arm, scons, meson, ninja
 
 # Unified build
-make qemu-a9
+make vexpress-a9-qemu
 
 # Configure API key (optional)
-meson configure build/qemu-a9 -Dai_api_key='<your-key>'
-meson compile -C build/qemu-a9
-cd platform/qemu-a9-rtthread && scons -j$(nproc)
+meson configure build/vexpress-a9-qemu -Dai_api_key='<your-key>'
+meson compile -C build/vexpress-a9-qemu
+cd platform/vexpress-a9-qemu && scons -j$(nproc)
 
 # Start API proxy (RT-Thread has no TLS, proxy forwards HTTP->HTTPS)
 python3 tools/api-proxy.py https://api.anthropic.com &
 
 # Run
-./tools/qemu-run.sh -M qemu-a9
+./tools/qemu-run.sh -M vexpress-a9-qemu
 ```
 
 ## Project Structure
@@ -192,7 +192,7 @@ python3 tools/api-proxy.py https://api.anthropic.com &
 rt-claw/
 ├── meson.build                  # Meson build definition (cross-compiles src + osal)
 ├── meson.options                # Meson build options (osal backend, features, AI config)
-├── Makefile                     # Unified build entry (make esp32c3-qemu / make qemu-a9)
+├── Makefile                     # Unified build entry (make esp32c3-qemu / make vexpress-a9-qemu)
 ├── osal/                        # OS Abstraction Layer
 │   ├── include/claw_os.h       #   Unified RTOS API
 │   ├── freertos/                #   FreeRTOS implementation
@@ -207,7 +207,7 @@ rt-claw/
 │   └── tools/                   #   Tool Use framework (GPIO, system, LCD)
 ├── platform/
 │   ├── esp32c3-qemu/            # ESP32-C3 QEMU (ESP-IDF, Meson + CMake)
-│   └── qemu-a9-rtthread/       # RT-Thread BSP (Meson + SCons)
+│   └── vexpress-a9-qemu/       # RT-Thread BSP (Meson + SCons)
 ├── vendor/
 │   ├── freertos/                # FreeRTOS-Kernel (submodule)
 │   └── rt-thread/               # RT-Thread (submodule)
@@ -218,7 +218,7 @@ rt-claw/
 │   ├── gen-esp32c3-cross.py     # Auto-generate Meson cross-file from ESP-IDF
 │   └── ...
 └── tools/
-    ├── qemu-run.sh              # Unified QEMU launcher (-M qemu-a9 / -M esp32c3-qemu)
+    ├── qemu-run.sh              # Unified QEMU launcher (-M vexpress-a9-qemu / -M esp32c3-qemu)
     ├── api-proxy.py             # HTTP→HTTPS proxy for QEMU (no TLS on RT-Thread)
     └── ...
 ```

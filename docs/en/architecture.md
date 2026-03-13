@@ -82,7 +82,7 @@ LLM API client with Tool Use support:
 - Build: Meson (cross-compile) + CMake/idf.py (link + flash)
 - QEMU: Espressif fork (qemu-riscv32), UART only (no WiFi sim)
 
-### QEMU vexpress-a9 (platform/qemu-a9-rtthread/)
+### vexpress-a9 QEMU (platform/vexpress-a9-qemu/)
 
 - CPU: ARM Cortex-A9 (dual-core)
 - RTOS: RT-Thread

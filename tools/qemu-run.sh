@@ -7,7 +7,7 @@
 #   ./tools/qemu-run.sh -M <machine> [options]
 #
 # Machines:
-#   qemu-a9        QEMU vexpress-a9 (RT-Thread, ARM Cortex-A9)
+#   vexpress-a9-qemu        QEMU vexpress-a9 (RT-Thread, ARM Cortex-A9)
 #   esp32c3-qemu   QEMU ESP32-C3 (ESP-IDF, Espressif QEMU fork)
 #   esp32s3-qemu   QEMU ESP32-S3 (ESP-IDF, Espressif QEMU fork)
 #
@@ -25,7 +25,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
-MACHINES="qemu-a9 esp32c3-qemu esp32s3-qemu"
+MACHINES="vexpress-a9-qemu esp32c3-qemu esp32s3-qemu"
 MACHINE=""
 GDB_MODE=0
 GRAPHICS=0
@@ -45,7 +45,7 @@ _qemu_run() {
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
-    machines="qemu-a9 esp32c3-qemu esp32s3-qemu"
+    machines="vexpress-a9-qemu esp32c3-qemu esp32s3-qemu"
     opts="-M -g --graphics -h --help"
 
     case "$prev" in
@@ -92,11 +92,11 @@ if [ -z "$MACHINE" ]; then
     usage 1
 fi
 
-# ---- qemu-a9: QEMU vexpress-a9 (RT-Thread) ----
+# ---- vexpress-a9-qemu: QEMU vexpress-a9 (RT-Thread) ----
 
-run_qemu_a9() {
-    local build_dir="$PROJECT_ROOT/build/qemu-a9"
-    local platform_dir="$PROJECT_ROOT/platform/qemu-a9-rtthread"
+run_vexpress_a9_qemu() {
+    local build_dir="$PROJECT_ROOT/build/vexpress-a9-qemu"
+    local platform_dir="$PROJECT_ROOT/platform/vexpress-a9-qemu"
 
     cd "$platform_dir" || exit 1
 
@@ -107,7 +107,7 @@ run_qemu_a9() {
 
     if [ ! -f "$build_dir/rtthread.bin" ]; then
         echo "Error: $build_dir/rtthread.bin not found. Build first:"
-        echo "  make qemu-a9"
+        echo "  make vexpress-a9-qemu"
         exit 1
     fi
 
@@ -230,7 +230,7 @@ run_esp32s3_qemu() {
 # ---- dispatch ----
 
 case "$MACHINE" in
-    qemu-a9)       run_qemu_a9 ;;
+    vexpress-a9-qemu)       run_vexpress_a9_qemu ;;
     esp32c3-qemu)  run_esp32c3_qemu ;;
     esp32s3-qemu)  run_esp32s3_qemu ;;
     *)

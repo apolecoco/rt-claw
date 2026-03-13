@@ -10,13 +10,13 @@ All outputs go to `build/<platform>/`.
 
 ```bash
 # Unified entry (from project root)
-make qemu-a9                           # Meson + SCons → build/qemu-a9/
+make vexpress-a9-qemu                           # Meson + SCons → build/vexpress-a9-qemu/
 make esp32c3-qemu                      # Meson + idf.py (requires ESP-IDF)
 make esp32s3-qemu                      # Meson + idf.py (requires ESP-IDF)
 
 # Meson only (libraries)
-meson setup build/qemu-a9 --cross-file platform/qemu-a9-rtthread/cross.ini
-meson compile -C build/qemu-a9
+meson setup build/vexpress-a9-qemu --cross-file platform/vexpress-a9-qemu/cross.ini
+meson compile -C build/vexpress-a9-qemu
 
 # ESP32-C3: auto-generated cross.ini from ESP-IDF config
 python3 scripts/gen-esp32c3-cross.py
@@ -33,9 +33,9 @@ meson compile -C build/esp32s3-qemu
 
 ```bash
 # QEMU vexpress-a9 (RT-Thread)
-make run-qemu-a9                       # build + launch QEMU
-tools/qemu-run.sh -M qemu-a9           # launch only (must build first)
-tools/qemu-run.sh -M qemu-a9 -g        # debug mode (GDB port 1234)
+make run-vexpress-a9-qemu                       # build + launch QEMU
+tools/qemu-run.sh -M vexpress-a9-qemu           # launch only (must build first)
+tools/qemu-run.sh -M vexpress-a9-qemu -g        # debug mode (GDB port 1234)
 
 # ESP32-C3 QEMU (requires ESP-IDF)
 make run-esp32c3-qemu                  # build + launch QEMU
@@ -96,7 +96,7 @@ No unit test framework yet. Verify changes by:
 
 1. Build passes on at least one platform
 2. `scripts/check-patch.sh --staged` passes
-3. QEMU boot test: `tools/qemu-run.sh -M qemu-a9` or `tools/qemu-run.sh -M esp32c3-qemu` or `tools/qemu-run.sh -M esp32s3-qemu`
+3. QEMU boot test: `tools/qemu-run.sh -M vexpress-a9-qemu` or `tools/qemu-run.sh -M esp32c3-qemu` or `tools/qemu-run.sh -M esp32s3-qemu`
 
 ## Key Paths
 
@@ -116,8 +116,8 @@ No unit test framework yet. Verify changes by:
 | `src/tools/` | Tool Use framework |
 | `platform/esp32c3-qemu/` | ESP32-C3 QEMU ESP-IDF project + auto-gen cross-file |
 | `platform/esp32s3-qemu/` | ESP32-S3 QEMU ESP-IDF project + auto-gen cross-file |
-| `platform/qemu-a9-rtthread/` | RT-Thread BSP + Meson cross-file |
+| `platform/vexpress-a9-qemu/` | RT-Thread BSP + Meson cross-file |
 | `scripts/gen-esp32c3-cross.py` | Generate ESP32-C3 Meson cross-file |
 | `scripts/gen-esp32s3-cross.py` | Generate ESP32-S3 Meson cross-file |
-| `tools/qemu-run.sh` | Unified QEMU launcher (-M qemu-a9/esp32c3-qemu/esp32s3-qemu) |
+| `tools/qemu-run.sh` | Unified QEMU launcher (-M vexpress-a9-qemu/esp32c3-qemu/esp32s3-qemu) |
 | `tools/api-proxy.py` | HTTP→HTTPS proxy for QEMU without TLS |
