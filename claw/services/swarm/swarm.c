@@ -9,6 +9,9 @@
 #include "claw_config.h"
 #include "claw_net.h"
 #include "services/swarm/swarm.h"
+#ifdef CONFIG_RTCLAW_HEARTBEAT_ENABLE
+#include "core/heartbeat.h"
+#endif
 
 #include <string.h>
 #include <stdio.h>
@@ -61,6 +64,12 @@ static void notify_node_event(uint32_t node_id, int joined)
 {
     CLAW_LOGI(TAG, "node 0x%08x %s",
               (unsigned)node_id, joined ? "joined" : "left");
+#ifdef CONFIG_RTCLAW_HEARTBEAT_ENABLE
+    char msg[48];
+    snprintf(msg, sizeof(msg), "node 0x%08x %s",
+             (unsigned)node_id, joined ? "joined" : "left");
+    heartbeat_post("swarm", msg);
+#endif
 }
 
 static int find_or_add_node(uint32_t node_id)

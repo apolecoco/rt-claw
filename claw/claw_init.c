@@ -23,6 +23,9 @@
 #ifdef CONFIG_RTCLAW_SKILL_ENABLE
 #include "services/ai/ai_skill.h"
 #endif
+#ifdef CONFIG_RTCLAW_HEARTBEAT_ENABLE
+#include "core/heartbeat.h"
+#endif
 #ifdef CONFIG_RTCLAW_FEISHU_ENABLE
 #include "services/im/feishu.h"
 #endif
@@ -50,6 +53,9 @@ static const claw_service_t s_services[] = {
     { "ai_engine",   ai_engine_init,    NULL,          NULL },
 #ifdef CONFIG_RTCLAW_SKILL_ENABLE
     { "ai_skill",    ai_skill_init,     NULL,          NULL },
+#endif
+#ifdef CONFIG_RTCLAW_HEARTBEAT_ENABLE
+    { "heartbeat",   heartbeat_init,    NULL,          NULL },
 #endif
 #ifdef CONFIG_RTCLAW_FEISHU_ENABLE
     { "feishu",      feishu_init,       feishu_start,  NULL },

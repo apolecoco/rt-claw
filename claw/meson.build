@@ -39,6 +39,13 @@ endif
 if get_option('tool_net')
     feature_defs += '-DCONFIG_RTCLAW_TOOL_NET'
 endif
+if get_option('heartbeat')
+    if not get_option('sched')
+        error('heartbeat requires sched=true')
+    endif
+    feature_defs += '-DCONFIG_RTCLAW_HEARTBEAT_ENABLE'
+    src_files += files('core/heartbeat.c')
+endif
 
 rtclaw_lib = static_library('rtclaw', src_files,
     include_directories: [claw_inc] + platform_incs,

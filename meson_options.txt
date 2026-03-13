@@ -17,6 +17,8 @@ option('tool_sched', type: 'boolean', value: true,
     description: 'Enable scheduler tool')
 option('tool_net', type: 'boolean', value: true,
     description: 'Enable network (HTTP) tool')
+option('heartbeat', type: 'boolean', value: false,
+    description: 'Enable periodic AI heartbeat (requires sched)')
 
 option('ai_api_key', type: 'string', value: '',
     description: 'AI API key (overrides CONFIG_RTCLAW_AI_API_KEY)')

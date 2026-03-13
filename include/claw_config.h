@@ -35,6 +35,14 @@
 #define CLAW_SCHED_THREAD_STACK     8192
 #define CLAW_SCHED_THREAD_PRIO      10
 
+/* Heartbeat (periodic AI check-in) */
+#define CLAW_HEARTBEAT_INTERVAL_MS  300000  /* 5 minutes */
+#define CLAW_HEARTBEAT_MAX_EVENTS   8
+#define CLAW_HEARTBEAT_MSG_MAX      128
+#define CLAW_HEARTBEAT_PROMPT_MAX   1024
+#define CLAW_HEARTBEAT_REPLY_MAX    512
+#define CLAW_HEARTBEAT_THREAD_STACK 8192
+
 /* AI engine defaults — override per-platform via build flags */
 #ifndef CONFIG_RTCLAW_AI_API_KEY
 #define CONFIG_RTCLAW_AI_API_KEY      ""
