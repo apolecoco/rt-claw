@@ -54,8 +54,8 @@ int claw_net_post(const char *url,
         .event_handler = on_http_event,
         .user_data = &ctx,
         .crt_bundle_attach = esp_crt_bundle_attach,
-        .buffer_size = 4096,
-        .buffer_size_tx = 4096,
+        .buffer_size = 2048,
+        .buffer_size_tx = 2048,
     };
 
     esp_http_client_handle_t client = esp_http_client_init(&cfg);

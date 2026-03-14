@@ -47,11 +47,11 @@ static char s_model[AI_MODEL_MAX];
 #ifdef CONFIG_RTCLAW_AI_CONTEXT_SIZE
 #define RESP_BUF_SIZE      CONFIG_RTCLAW_AI_CONTEXT_SIZE
 #else
-#define RESP_BUF_SIZE      8192
+#define RESP_BUF_SIZE      4096
 #endif
 #define MAX_TOOL_ROUNDS    5
-#define API_MAX_RETRIES    3
-#define API_RETRY_BASE_MS  3000
+#define API_MAX_RETRIES    2
+#define API_RETRY_BASE_MS  2000
 
 static claw_mutex_t s_api_lock;
 static ai_status_cb_t s_status_cb;
