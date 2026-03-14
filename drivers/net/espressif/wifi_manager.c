@@ -210,22 +210,25 @@ esp_err_t wifi_manager_set_credentials(const char *ssid,
 
 void wifi_manager_scan_and_print(void)
 {
+    /*
+     * Scan while staying connected — no disconnect needed.
+     * ESP-IDF supports STA background scan; the current
+     * connection is briefly paused during channel hopping
+     * but not dropped.
+     */
     wifi_scan_config_t scan_cfg = {
         .ssid = NULL,
         .bssid = NULL,
         .channel = 0,
         .show_hidden = true,
+        .scan_type = WIFI_SCAN_TYPE_ACTIVE,
     };
 
     printf("scanning nearby APs...\n");
 
-    esp_wifi_disconnect();
-    vTaskDelay(pdMS_TO_TICKS(200));
-
     esp_err_t err = esp_wifi_scan_start(&scan_cfg, true);
     if (err != ESP_OK) {
         printf("scan failed: %s\n", esp_err_to_name(err));
-        esp_wifi_connect();
         return;
     }
 
@@ -234,7 +237,6 @@ void wifi_manager_scan_and_print(void)
 
     if (ap_count == 0) {
         printf("no APs found\n");
-        esp_wifi_connect();
         return;
     }
 
@@ -245,27 +247,24 @@ void wifi_manager_scan_and_print(void)
     wifi_ap_record_t *ap_list = calloc(ap_count,
                                        sizeof(wifi_ap_record_t));
     if (!ap_list) {
-        ESP_LOGE(TAG, "out of memory for AP list");
-        esp_wifi_connect();
+        printf("out of memory for AP list\n");
         return;
     }
 
     uint16_t ap_max = ap_count;
     if (esp_wifi_scan_get_ap_records(&ap_max, ap_list) != ESP_OK) {
-        ESP_LOGE(TAG, "failed to get AP records");
+        printf("failed to get AP records\n");
         free(ap_list);
-        esp_wifi_connect();
         return;
     }
 
     printf("Found %u APs:\n", ap_max);
     for (uint16_t i = 0; i < ap_max; i++) {
         const wifi_ap_record_t *ap = &ap_list[i];
-        printf("  [%u] SSID=%-32s RSSI=%d CH=%d Auth=%d\n",
+        printf("  [%u] %-32s  RSSI=%d  CH=%d\n",
                i + 1, (const char *)ap->ssid,
-               ap->rssi, ap->primary, ap->authmode);
+               ap->rssi, ap->primary);
     }
 
     free(ap_list);
-    esp_wifi_connect();
 }
