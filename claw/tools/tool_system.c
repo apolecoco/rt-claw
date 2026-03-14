@@ -7,6 +7,7 @@
 
 #include "claw/tools/claw_tools.h"
 #include "claw/claw_config.h"
+#include "claw/services/ai/ai_memory.h"
 
 #include <stdio.h>
 
@@ -99,6 +100,20 @@ static int tool_system_restart(const cJSON *params, cJSON *result)
     return CLAW_OK;
 }
 
+static int tool_clear_history(const cJSON *params, cJSON *result)
+{
+    (void)params;
+    int count = ai_memory_count();
+    ai_memory_clear();
+    cJSON_AddStringToObject(result, "status", "ok");
+    char msg[64];
+    snprintf(msg, sizeof(msg),
+             "cleared %d messages from conversation history", count);
+    cJSON_AddStringToObject(result, "message", msg);
+    cJSON_AddNumberToObject(result, "freed_messages", count);
+    return CLAW_OK;
+}
+
 static const char schema_empty[] =
     "{\"type\":\"object\",\"properties\":{}}";
 
@@ -113,6 +128,12 @@ void claw_tools_register_system(void)
         "Get heap memory status: total, free, minimum-ever-free bytes, "
         "and usage percentage.",
         schema_empty, tool_memory_info);
+
+    claw_tool_register("clear_history",
+        "Clear the conversation history to free memory. "
+        "Use when memory is low or the conversation is too long. "
+        "This removes all previous messages from context.",
+        schema_empty, tool_clear_history);
 
     claw_tool_register("system_restart",
         "Restart the system. Use with caution — "
@@ -164,6 +185,19 @@ static int tool_memory_info(const cJSON *params, cJSON *result)
 static const char schema_empty[] =
     "{\"type\":\"object\",\"properties\":{}}";
 
+static int tool_clear_history(const cJSON *params, cJSON *result)
+{
+    (void)params;
+    int count = ai_memory_count();
+    ai_memory_clear();
+    cJSON_AddStringToObject(result, "status", "ok");
+    char msg[64];
+    snprintf(msg, sizeof(msg),
+             "cleared %d messages from conversation history", count);
+    cJSON_AddStringToObject(result, "message", msg);
+    return CLAW_OK;
+}
+
 void claw_tools_register_system(void)
 {
     claw_tool_register("system_info",
@@ -174,6 +208,10 @@ void claw_tools_register_system(void)
         "Get heap memory status: total, free, max-ever-used bytes, "
         "and usage percentage.",
         schema_empty, tool_memory_info);
+
+    claw_tool_register("clear_history",
+        "Clear the conversation history to free memory.",
+        schema_empty, tool_clear_history);
 }
 
 #else /* unknown platform */

@@ -482,6 +482,25 @@ int ai_chat(const char *user_msg, char *reply, size_t reply_size)
         return CLAW_ERROR;
     }
 
+    /*
+     * Memory pressure check: if free heap is critically low,
+     * clear conversation history to reclaim memory and warn
+     * the user.  History is the biggest dynamic consumer
+     * (~2-5KB per message in the cJSON tree).
+     */
+#ifdef CLAW_PLATFORM_ESP_IDF
+    {
+        uint32_t free_heap = esp_get_free_heap_size();
+        if (free_heap < 60000 && ai_memory_count() > 2) {
+            int cleared = ai_memory_count();
+            ai_memory_clear();
+            CLAW_LOGW(TAG, "low memory (%u bytes), cleared %d msgs",
+                      (unsigned)free_heap, cleared);
+            claw_lcd_status("Low memory - cleared");
+        }
+    }
+#endif
+
     ai_memory_add_message("user", user_msg);
 
     char *sys_prompt = build_system_prompt();
