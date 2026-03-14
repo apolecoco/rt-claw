@@ -15,6 +15,7 @@ Use `scripts/check-patch.sh` to verify compliance before submitting.
 | `claw/`     | Yes     | Core services, gateway, AI engine   |
 | `include/`  | Yes     | Public headers                      |
 | `osal/`     | Yes     | OS abstraction layer                |
+| `drivers/`  | No      | Hardware drivers (vendor style)     |
 | `platform/` | No      | Platform-specific BSP/build files   |
 | `vendor/`   | No      | Third-party RTOS source code        |
 | `scripts/`  | No      | Build and launch scripts            |

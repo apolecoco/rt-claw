@@ -44,35 +44,39 @@ scenario without writing, compiling, or flashing embedded code again.
 | Feature | Description | Status |
 |---------|-------------|--------|
 | LLM Chat Engine | Interactive conversation with Claude API over HTTP | Done |
-| Tool Use | LLM-driven hardware control (GPIO, system info, LCD) via function calling | Done |
+| Tool Use | LLM-driven hardware control (GPIO, system info, LCD, audio, scheduler, HTTP) via function calling; 30+ built-in tools | Done |
 | LCD Graphics | 320x240 RGB565 framebuffer with text, shapes, and drawing primitives; AI agent can draw on screen via tool calls | Done |
-| Chat-first Shell | UART REPL where direct input goes to AI, /commands for system; UTF-8 support | Done |
+| OLED Display | SSD1306 I2C OLED driver for xiaozhi-xmini board | Done |
+| Audio | ES8311 codec driver with preset sound effects (success, error, notify, alert); AI-controllable volume and beep | Done |
+| Chat-first Shell | UART REPL with insert-mode editing, tab completion, UTF-8 support; direct input goes to AI, /commands for system | Done |
 | OSAL | Write once, run on FreeRTOS and RT-Thread with zero code changes | Done |
 | Gateway | Thread-safe message routing between services | Done |
 | Networking | Ethernet + HTTP client on ESP32-C3 QEMU; WiFi on real hardware | Done |
 | Multi-Model API | Support mainstream LLM APIs: Claude, GPT, Gemini, DeepSeek, GLM, MiniMax, Grok, Moonshot, Baichuan, Qwen, Doubao, Llama (Ollama) | Planned |
 | Web Config Portal | Lightweight built-in web page for configuring API keys, selecting models, and tuning parameters at runtime | Planned |
-| Swarm Intelligence | Node discovery, heartbeat, distributed task scheduling | In Progress |
-| Conversation Memory | Short-term RAM ring buffer + long-term NVS Flash persistent storage | Done |
+| Swarm Intelligence | Node discovery, heartbeat, capability bitmap, remote tool invocation across nodes | In Progress |
+| Conversation Memory | Short-term RAM ring buffer + long-term NVS Flash persistent storage; AI can save/delete/list memories | Done |
 | Skill Memory | Nodes learn and recall frequently used operation patterns | In Progress |
-| Scheduled Tasks | Timer-driven task execution and periodic automation | Done |
-| IM Integrations | Connect to Feishu, DingTalk, QQ, and Telegram as message channels | In Progress |
+| Scheduled Tasks | Timer-driven task execution and periodic automation; AI can create/list/remove tasks | Done |
+| IM Integrations | Feishu (Lark) via WebSocket long connection; planned: DingTalk, QQ, Telegram | In Progress |
 | Claw Skill Provider | Serve as a skill for other Claws, giving them the ability to sense and control the physical world | Planned |
 
 ## Architecture
 
 ```
-+---------------------------------------------------+
-|                rt-claw Application                |
-|  gateway | swarm | net | ai_engine | tools | lcd  |
-+---------------------------------------------------+
-|            osal/claw_os.h  (OSAL API)             |
-+-----------------+---------------------------------+
-| FreeRTOS (IDF)  |          RT-Thread              |
-+-----------------+---------------------------------+
-| ESP32-C3 / S3   |  QEMU vexpress-a9               |
-| WiFi / BLE      |  Ethernet / UART                |
-+-----------------+---------------------------------+
++--------------------------------------------------------------+
+|                     rt-claw Application                      |
+| gateway | swarm | net | ai_engine | tools | shell | sched   |
+| feishu  | heartbeat | lcd | audio | memory | skill          |
++--------------------------------------------------------------+
+|               osal/claw_os.h  (OSAL API)                    |
++-------------------+------------------------------------------+
+| FreeRTOS (IDF)    |             RT-Thread                    |
++-------------------+------------------------------------------+
+| ESP32-C3 / S3     |  QEMU vexpress-a9                        |
+| WiFi / BLE / OLED |  Ethernet / UART                         |
+| Audio (ES8311)    |                                          |
++-------------------+------------------------------------------+
 ```
 
 ## Supported Platforms
@@ -168,6 +172,15 @@ idf.py -C platform/esp32s3 -p /dev/ttyUSB0 flash monitor
 | `/wifi_set <SSID> <PASS>` | Save WiFi credentials to NVS |
 | `/wifi_status` | Show connection state and IP |
 | `/wifi_scan` | Scan nearby access points |
+| `/remember <key> <value>` | Save fact to long-term memory |
+| `/forget <key>` | Delete fact from long-term memory |
+| `/memories` | List all long-term memories |
+| `/task` | List scheduled tasks (or `/task rm <name>` to remove) |
+| `/skill` | List or execute a skill |
+| `/nodes` | Show swarm node table |
+| `/log [on\|off]` | Toggle log output |
+| `/history` | Show conversation message count |
+| `/clear` | Clear conversation memory |
 | `/help` | List all commands |
 
 ### ESP32-C3 (ESP-IDF + QEMU)
@@ -319,16 +332,21 @@ rt-claw/
 │   └── rtthread/                #   RT-Thread implementation
 ├── claw/                        # Platform-independent core
 │   ├── claw_init.c             #   Boot entry point
-│   ├── core/                   #   Gateway, scheduler
-│   ├── services/ai/            #   LLM chat engine (Claude API)
+│   ├── core/                   #   Gateway, scheduler, heartbeat
+│   ├── services/ai/            #   LLM chat engine, memory, skill
 │   ├── services/net/           #   Network service
 │   ├── services/swarm/         #   Swarm intelligence
-│   └── tools/                  #   Tool Use framework (GPIO, system, LCD)
-├── drivers/
-│   └── net/espressif/          # Shared Espressif WiFi driver
+│   ├── services/im/            #   IM integrations (Feishu)
+│   ├── shell/                  #   UART REPL shell
+│   └── tools/                  #   Tool Use framework (GPIO, system, LCD, audio, scheduler, HTTP)
+├── drivers/                     # Hardware drivers (Linux-kernel style)
+│   ├── audio/espressif/        #   ES8311 audio codec
+│   ├── display/espressif/      #   SSD1306 OLED display
+│   ├── net/espressif/          #   Shared WiFi driver (C3/S3)
+│   └── serial/espressif/       #   Serial console
 ├── platform/
 │   ├── common/espressif/       # Shared Espressif board helpers (WiFi init)
-│   ├── esp32c3/                # ESP32-C3 unified platform (boards/qemu/devkit/xiaozhi/)
+│   ├── esp32c3/                # ESP32-C3 unified platform (boards/qemu/devkit/xiaozhi-xmini/)
 │   ├── esp32s3/                # ESP32-S3 unified platform (boards/qemu/default/)
 │   └── vexpress-a9/            # RT-Thread BSP (Meson + SCons)
 ├── vendor/

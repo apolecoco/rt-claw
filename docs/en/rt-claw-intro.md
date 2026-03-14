@@ -32,11 +32,12 @@ Setting a scheduled task is just one sentence away:
 
 - **Multi-RTOS**: Same codebase runs on FreeRTOS and RT-Thread with zero changes via OSAL
 - **Compile-time strippable**: Every module (Shell, LCD, swarm, scheduler, each tool group) toggles independently via menuconfig, fitting hardware from 256 KB to 4 MB
-- **Tool Use**: 13 built-in tools covering GPIO control, system monitoring, LCD drawing, and scheduled tasks — the LLM orchestrates them autonomously via function calling
-- **Conversation Memory**: Short-term RAM ring buffer keeps context coherent; long-term NVS Flash storage persists across reboots
+- **Tool Use**: 30+ built-in tools covering GPIO control, system monitoring, LCD drawing, audio playback, scheduled tasks, HTTP requests, and long-term memory — the LLM orchestrates them autonomously via function calling
+- **Conversation Memory**: Short-term RAM ring buffer keeps context coherent; long-term NVS Flash storage persists across reboots; AI can save, delete, and list memories
+- **Audio**: ES8311 codec driver with preset sound effects (success, error, notify, alert); AI-controllable volume and beep
 - **Skill System**: Predefined skill templates (drawing, system monitor, greeting) — trigger complex workflows with a single sentence
-- **Swarm Intelligence**: UDP heartbeat discovers other nodes on the LAN, laying the groundwork for multi-device collaboration
-- **Scheduled Tasks**: AI can autonomously create timed tasks for periodic automation
+- **Swarm Intelligence**: UDP heartbeat discovers other nodes on the LAN, capability bitmap broadcast, remote tool invocation across nodes
+- **Scheduled Tasks**: AI can autonomously create, list, and remove timed tasks for periodic automation
 - **IM Integration**: Feishu long connection, no public IP required — the device is online the moment it boots
 
 ## Three Steps to Start

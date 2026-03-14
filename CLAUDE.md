@@ -89,7 +89,7 @@ Format: `subsystem: short description` (max 76 chars), body wrapped at 76 chars.
 
 Every commit **must** include `Signed-off-by` (`git commit -s`).
 
-Subsystem prefixes: `osal`, `gateway`, `swarm`, `net`, `ai`, `platform`, `build`, `docs`, `tools`, `scripts`, `main`, `drivers`.
+Subsystem prefixes: `osal`, `gateway`, `swarm`, `net`, `ai`, `platform`, `build`, `docs`, `tools`, `scripts`, `main`, `drivers`, `sched`, `feishu`, `ci`, `claw`, `tests`.
 
 ## Checks
 
@@ -125,16 +125,20 @@ No unit test framework yet. Verify changes by:
 | `build/<platform>/` | Build outputs (gitignored) |
 | `include/` | Unified public headers (claw_os.h, claw_net.h, claw_board.h, etc.) |
 | `include/drivers/` | Driver public headers (mirror of drivers/ structure) |
+| `include/utils/` | Utility headers (bitops.h, list.h) |
 | `drivers/net/espressif/` | Espressif WiFi driver (shared across C3/S3) |
+| `drivers/audio/espressif/` | ES8311 audio codec driver |
+| `drivers/display/espressif/` | SSD1306 OLED display driver |
+| `drivers/serial/espressif/` | Serial console driver |
 | `osal/freertos/` | FreeRTOS OSAL implementation |
 | `osal/rtthread/` | RT-Thread OSAL implementation |
 | `vendor/lib/cjson/` | cJSON library |
 | `vendor/os/freertos/` | FreeRTOS-Kernel (submodule) |
 | `vendor/os/rt-thread/` | RT-Thread (submodule) |
 | `claw/claw_init.c` | Boot entry point |
-| `include/claw_config.h` | Compile-time constants (platform-independent) |
+| `include/claw/claw_config.h` | Compile-time constants (platform-independent) |
 | `claw/core/gateway.c` | Message router |
-| `claw/services/{ai,net,swarm}/` | Service modules |
+| `claw/services/{ai,net,swarm,im}/` | Service modules |
 | `claw/tools/` | Tool Use framework |
 | `platform/common/espressif/` | Shared Espressif board helpers (WiFi init + shell) |
 | `platform/esp32c3/` | ESP32-C3 unified ESP-IDF project (all boards) |

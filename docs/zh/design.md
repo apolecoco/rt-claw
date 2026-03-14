@@ -83,8 +83,8 @@ AI Engine:  prio 5   → P3 AI（shell 调用时继承 shell 线程优先级）
 |  本地规则引擎、安全拦截、定时自动化                           |
 +----------------------------------------------------------+
 |  Expression（表达）                                       |
-|  LCD + Shell + Feishu                                    |
-|  文字、图形、IM 消息输出                                    |
+|  LCD + OLED + Shell + Feishu + Audio (ES8311)            |
+|  文字、图形、IM 消息、音频输出                               |
 +----------------------------------------------------------+
 |  Action（执行）                                           |
 |  tools/gpio + tools/sched + tools/net                    |
@@ -93,6 +93,7 @@ AI Engine:  prio 5   → P3 AI（shell 调用时继承 shell 线程优先级）
 |  Perception（感知）                                       |
 |  WiFi scan + swarm discovery + 传感器（待扩展）            |
 |  环境感知、节点发现、数据采集                                |
++----------------------------------------------------------+
 +----------------------------------------------------------+
 ```
 
@@ -367,13 +368,16 @@ rt-claw 已有 `ai_skill.c`，技能存储在 NVS 中。
 | 现有模块 | 当前角色 | 演进方向 |
 |----------|----------|----------|
 | `gateway` | 消息队列骨架 | 蜂群节点间路由（待多节点时实现） |
-| `scheduler` | 定时回调 | + NVS 持久化 + deadline 感知 |
-| `ai_engine` | Claude API 客户端 | + 上下文注入 + 多格式支持（可选） |
-| `tools/gpio` | GPIO 读写 | + 安全策略白名单 |
-| `tools/sched` | AI 创建定时任务 | + 持久化恢复 |
+| `scheduler` | 定时回调 + NVS 持久化 | + deadline 感知 |
+| `ai_engine` | Claude API 客户端 + 上下文注入 | + 多格式支持（可选） |
+| `ai_memory` | RAM 环形缓冲 + NVS 长期存储 | + 事件日志层 |
+| `tools/gpio` | GPIO 读写 + 安全策略 | + ADC/PWM 支持 |
+| `tools/sched` | AI 创建定时任务 + 持久化 | 稳定 |
+| `tools/audio` | ES8311 蜂鸣/音量/预设音效 | + 录音、流式播放 |
 | `heartbeat` | 定时 AI 巡检 | + 事件日志聚合 |
-| `swarm` | UDP 心跳发现 | + 能力位图 → 远程 RPC → 分布式感知 → 任务迁移 |
-| `wifi_manager` | WiFi STA 管理 | 当前完整，无需改动 |
+| `swarm` | UDP 心跳 + 能力位图 + 远程 RPC | + 分布式感知 → 任务迁移 |
+| `feishu` | WebSocket 长连接 IM | + 多 IM 通道支持 |
+| `wifi_manager` | WiFi STA 管理 | 稳定 |
 
 ## 资源预算
 

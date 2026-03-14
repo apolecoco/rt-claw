@@ -66,9 +66,47 @@ Platform-aware networking:
 LLM API client with Tool Use support:
 
 - Claude API integration with streaming HTTP requests
-- Tool Use: LLM-driven hardware control via function calling (GPIO, system info, LCD)
+- Tool Use: LLM-driven hardware control via function calling; 30+ built-in tools covering GPIO, system info, LCD, audio, scheduler, HTTP requests, and long-term memory
 - Conversation memory (short-term RAM ring buffer + long-term NVS storage)
+- Skill system: predefined and AI-created reusable prompt templates
 - HTTP/HTTPS transport (ESP-IDF uses esp_http_client with TLS; RT-Thread uses BSD sockets via API proxy)
+
+### Scheduler (claw/core/scheduler)
+
+Timer-driven task execution:
+
+- Up to 8 concurrent scheduled tasks with 1-second tick resolution
+- AI can create, list, and remove tasks via tool calls
+- Supports one-shot and repeating tasks
+
+### IM Service (claw/services/im)
+
+Instant messaging integrations:
+
+- Feishu (Lark): WebSocket long connection, no public IP required
+- Event subscription: `im.message.receive_v1`
+- Planned: DingTalk, QQ, Telegram
+
+### Shell (claw/shell)
+
+UART REPL with chat-first design:
+
+- Direct text input goes to AI engine
+- `/commands` for system operations (14 built-in commands)
+- Insert-mode editing with tab completion
+- UTF-8 support
+
+## Drivers
+
+Linux-kernel style hardware driver layer: `drivers/<subsystem>/<vendor>/`.
+Public headers mirror the structure under `include/drivers/`.
+
+| Driver | Path | Description |
+|--------|------|-------------|
+| WiFi Manager | `drivers/net/espressif/` | ESP32 WiFi STA management (shared C3/S3) |
+| ES8311 Audio | `drivers/audio/espressif/` | I2C audio codec with preset sound effects |
+| SSD1306 OLED | `drivers/display/espressif/` | I2C OLED display (128x64) |
+| Console | `drivers/serial/espressif/` | Serial console driver |
 
 ## Platforms
 
@@ -81,6 +119,17 @@ LLM API client with Tool Use support:
 - RTOS: ESP-IDF + FreeRTOS
 - Build: Meson (cross-compile) + CMake/idf.py (link + flash)
 - QEMU: Espressif fork (qemu-riscv32), UART only (no WiFi sim)
+
+### ESP32-S3 (platform/esp32s3/)
+
+- CPU: Xtensa LX7 (dual-core), 240MHz
+- RAM: 512KB SRAM + 8MB PSRAM (real hardware)
+- WiFi: 802.11 b/g/n
+- BLE: Bluetooth 5.0 LE
+- RTOS: ESP-IDF + FreeRTOS
+- Build: Meson (cross-compile) + CMake/idf.py (link + flash)
+- QEMU: Espressif fork (qemu-system-xtensa), OpenCores Ethernet (no WiFi sim)
+- Boards: qemu (4MB), default (16MB + 8MB PSRAM real hardware)
 
 ### vexpress-a9 QEMU (platform/vexpress-a9/)
 
