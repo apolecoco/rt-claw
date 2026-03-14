@@ -76,7 +76,7 @@ menu "rt-claw Configuration"
             bool "Enable LCD display"
             default n
             help
-                SPI LCD panel support.
+                QEMU RGB framebuffer or SPI LCD panel.
                 Disable if no display hardware is present.
 
         config RTCLAW_SWARM_ENABLE
