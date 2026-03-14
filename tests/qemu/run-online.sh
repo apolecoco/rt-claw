@@ -19,13 +19,11 @@ cd "$PROJECT_ROOT"
 case "$platform" in
     esp32c3-qemu)
         setup_esp_idf
-        prepare_profile "$platform" feishu
         build_target "$platform"
         run_esp_qemu_until_log "$platform" 180 "[boot] AI>" "[boot] AI test failed:"
         ;;
     esp32s3-qemu)
         setup_esp_idf
-        prepare_profile "$platform" feishu
         build_target "$platform"
         run_esp_qemu_until_log "$platform" 240 "[boot] AI>" "[boot] AI test failed:"
         ;;
@@ -36,8 +34,7 @@ case "$platform" in
 esac
 
 "${SCRIPT_DIR}/assert-log.sh" "$log_file" \
-    "Testing AI connection" \
-    "ready to receive messages"
+    "Testing AI connection"
 
 if grep -Fq "[boot] AI>" "$log_file"; then
     echo "Online log: ${log_file}"

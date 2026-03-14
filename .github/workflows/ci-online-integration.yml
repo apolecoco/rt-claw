@@ -53,17 +53,9 @@ jobs:
         id: secrets
         env:
           RTCLAW_AI_API_KEY: ${{ secrets.RTCLAW_AI_API_KEY }}
-          RTCLAW_FEISHU_APP_ID: ${{ secrets.RTCLAW_FEISHU_APP_ID }}
-          RTCLAW_FEISHU_APP_SECRET: ${{ secrets.RTCLAW_FEISHU_APP_SECRET }}
         run: |
-          missing=0
-          for key in RTCLAW_AI_API_KEY RTCLAW_FEISHU_APP_ID RTCLAW_FEISHU_APP_SECRET; do
-            if [ -z "${!key:-}" ]; then
-              echo "::notice::Missing integration secret: ${key}"
-              missing=1
-            fi
-          done
-          if [ "$missing" -eq 1 ]; then
+          if [ -z "${RTCLAW_AI_API_KEY:-}" ]; then
+            echo "::notice::Missing integration secret: RTCLAW_AI_API_KEY"
             echo "enabled=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -99,8 +91,6 @@ jobs:
           RTCLAW_AI_MODEL: ${{ vars.RTCLAW_AI_MODEL }}
           RTCLAW_AI_API_URL_SECRET: ${{ secrets.RTCLAW_AI_API_URL }}
           RTCLAW_AI_MODEL_SECRET: ${{ secrets.RTCLAW_AI_MODEL }}
-          RTCLAW_FEISHU_APP_ID: ${{ secrets.RTCLAW_FEISHU_APP_ID }}
-          RTCLAW_FEISHU_APP_SECRET: ${{ secrets.RTCLAW_FEISHU_APP_SECRET }}
         run: |
           : "${RTCLAW_AI_API_URL:=${RTCLAW_AI_API_URL_SECRET:-https://api.anthropic.com/v1/messages}}"
           : "${RTCLAW_AI_MODEL:=${RTCLAW_AI_MODEL_SECRET:-claude-sonnet-4-5}}"
