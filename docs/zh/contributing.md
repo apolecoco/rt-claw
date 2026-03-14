@@ -38,10 +38,18 @@ Signed-off-by: Your Name <your@email.com>
 | `swarm`    | 蜂群服务（`claw/services/swarm/`）        |
 | `net`      | 网络服务（`claw/services/net/`）          |
 | `ai`       | AI 引擎（`claw/services/ai/`）           |
+| `sched`    | 调度器（`claw/core/scheduler.*`）         |
+| `feishu`   | 飞书 IM 集成（`claw/services/im/`）      |
+| `drivers`  | 硬件驱动（`drivers/`）                    |
 | `platform` | 平台特定变更（`platform/`）               |
-| `build`    | 构建系统（SCons、CMake、脚本）            |
+| `build`    | 构建系统（Meson、CMake、SCons）           |
 | `docs`     | 文档变更                                  |
-| `tools`    | 工具脚本（`scripts/`）                    |
+| `tools`    | Tool Use 框架（`claw/tools/`）            |
+| `scripts`  | 构建/CI 脚本（`scripts/`）               |
+| `main`     | 启动入口和初始化（`claw/claw_init.*`）    |
+| `claw`     | 跨模块核心变更                            |
+| `ci`       | CI 工作流变更（`.github/`）              |
+| `tests`    | 测试脚本（`tests/`）                      |
 
 ### 示例
 

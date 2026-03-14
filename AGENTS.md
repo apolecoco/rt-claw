@@ -4,7 +4,7 @@ Rules for all AI agents working on rt-claw. Read CLAUDE.md first for build, styl
 
 ## Core Rules
 
-1. **OSAL boundary**: code in `src/` must only include `claw_os.h` — never include FreeRTOS or RT-Thread headers directly.
+1. **OSAL boundary**: code in `claw/` must only include `claw_os.h` — never include FreeRTOS or RT-Thread headers directly.
 2. **Minimal change**: modify only what is necessary. Do not refactor, add comments, or "improve" unrelated code.
 3. **No backward compatibility**: prefer breaking changes over shims. Remove dead code, do not deprecate.
 4. **Build before commit**: ensure the change compiles on at least one platform.
@@ -12,17 +12,19 @@ Rules for all AI agents working on rt-claw. Read CLAUDE.md first for build, styl
 
 ## File Organization
 
-- Platform-independent logic goes in `src/`.
+- Platform-independent logic goes in `claw/`.
 - RTOS-specific code goes in `osal/<rtos>/`.
+- Hardware drivers go in `drivers/<subsystem>/<vendor>/`, headers in `include/drivers/<subsystem>/<vendor>/`.
 - Platform BSP code goes in `platform/<board>/`.
-- New services go in `src/services/<name>/`.
+- Shared platform helpers go in `platform/common/<vendor>/`.
+- New services go in `claw/services/<name>/`.
 - Never put application logic in `platform/` or `osal/`.
 
 ## Code Constraints
 
 - C99 only. No C++ in core code.
 - No dynamic memory allocation in OSAL layer — use static buffers or pool from `claw_config.h`.
-- Config macros follow `CLAW_<SUBSYSTEM>_<PARAM>` naming in `src/claw_config.h`.
+- Config macros follow `CLAW_<SUBSYSTEM>_<PARAM>` naming in `include/claw/claw_config.h`.
 - Every new `.c`/`.h` file needs the MIT SPDX license header.
 
 ## Commit Rules

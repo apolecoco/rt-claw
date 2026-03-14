@@ -65,9 +65,47 @@ claw/*.c  --->  #include "osal/claw_os.h"  (编译时接口)
 
 LLM API 客户端，支持 Tool Use：
 
-- Claude API 对话与函数调用（Tool Use）
-- 对话记忆（短期 RAM 环形缓冲 + 长期存储）
+- Claude API 对话与函数调用（Tool Use）；30+ 内置工具覆盖 GPIO、系统信息、LCD、音频、调度器、HTTP 请求、长期记忆
+- 对话记忆（短期 RAM 环形缓冲 + 长期 NVS 存储）
+- 技能系统：预定义和 AI 创建的可复用 Prompt 模板
 - HTTP/HTTPS 传输（ESP-IDF 使用 esp_http_client + TLS；RT-Thread 使用 BSD socket + 代理）
+
+### 调度器（claw/core/scheduler）
+
+定时任务执行：
+
+- 最多 8 个并发定时任务，1 秒 tick 精度
+- AI 可通过工具调用创建、查看、删除任务
+- 支持一次性和重复任务
+
+### IM 服务（claw/services/im）
+
+即时通讯集成：
+
+- 飞书（Lark）：WebSocket 长连接，无需公网 IP
+- 事件订阅：`im.message.receive_v1`
+- 计划中：钉钉、QQ、Telegram
+
+### Shell（claw/shell）
+
+UART 交互终端，对话优先设计：
+
+- 直接文本输入发送给 AI 引擎
+- `/命令` 执行系统操作（14 个内置命令）
+- 插入模式编辑 + Tab 补全
+- UTF-8 支持
+
+## 驱动层
+
+Linux 内核风格硬件驱动：`drivers/<subsystem>/<vendor>/`。
+公共头文件镜像位于 `include/drivers/`。
+
+| 驱动 | 路径 | 说明 |
+|------|------|------|
+| WiFi 管理器 | `drivers/net/espressif/` | ESP32 WiFi STA 管理（C3/S3 共享） |
+| ES8311 音频 | `drivers/audio/espressif/` | I2C 音频编解码器，预设音效 |
+| SSD1306 OLED | `drivers/display/espressif/` | I2C OLED 显示（128x64） |
+| 串行控制台 | `drivers/serial/espressif/` | 串行控制台驱动 |
 
 ## 平台
 
@@ -80,6 +118,17 @@ LLM API 客户端，支持 Tool Use：
 - RTOS：ESP-IDF + FreeRTOS
 - 构建：Meson（交叉编译）+ CMake/idf.py（链接 + 烧录）
 - QEMU：Espressif 分支（qemu-riscv32），仅 UART（无 WiFi 仿真）
+
+### ESP32-S3（platform/esp32s3/）
+
+- CPU：Xtensa LX7（双核），240MHz
+- RAM：512KB SRAM + 8MB PSRAM（真实硬件）
+- WiFi：802.11 b/g/n
+- BLE：Bluetooth 5.0 LE
+- RTOS：ESP-IDF + FreeRTOS
+- 构建：Meson（交叉编译）+ CMake/idf.py（链接 + 烧录）
+- QEMU：Espressif 分支（qemu-system-xtensa），OpenCores 以太网（无 WiFi 仿真）
+- 板卡：qemu（4MB）、default（16MB + 8MB PSRAM 真实硬件）
 
 ### vexpress-a9 QEMU（platform/vexpress-a9/）
 

@@ -38,10 +38,18 @@ Signed-off-by: Your Name <your@email.com>
 | `swarm`    | Swarm service (`claw/services/swarm/`)    |
 | `net`      | Network service (`claw/services/net/`)    |
 | `ai`       | AI engine (`claw/services/ai/`)           |
+| `sched`    | Scheduler (`claw/core/scheduler.*`)       |
+| `feishu`   | Feishu IM integration (`claw/services/im/`) |
+| `drivers`  | Hardware drivers (`drivers/`)             |
 | `platform` | Platform-specific changes (`platform/`)   |
-| `build`    | Build system (SCons, CMake, scripts)      |
+| `build`    | Build system (Meson, CMake, SCons)        |
 | `docs`     | Documentation changes                     |
-| `tools`    | Tool scripts (`scripts/`)                 |
+| `tools`    | Tool Use framework (`claw/tools/`)        |
+| `scripts`  | Build/CI scripts (`scripts/`)             |
+| `main`     | Boot entry and init (`claw/claw_init.*`)  |
+| `claw`     | Cross-cutting core changes                |
+| `ci`       | CI workflow changes (`.github/`)          |
+| `tests`    | Test scripts (`tests/`)                   |
 
 ### Examples
 

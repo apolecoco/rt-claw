@@ -86,8 +86,8 @@ Five layers mapped to existing modules:
 |  Local rule engine, safety interception, timed automation |
 +----------------------------------------------------------+
 |  Expression                                               |
-|  LCD + Shell + Feishu                                    |
-|  Text, graphics, IM message output                       |
+|  LCD + OLED + Shell + Feishu + Audio (ES8311)            |
+|  Text, graphics, IM message, audio output                |
 +----------------------------------------------------------+
 |  Action                                                   |
 |  tools/gpio + tools/sched + tools/net                    |
@@ -96,6 +96,7 @@ Five layers mapped to existing modules:
 |  Perception                                               |
 |  WiFi scan + swarm discovery + sensors (future)          |
 |  Environment sensing, node discovery, data collection    |
++----------------------------------------------------------+
 +----------------------------------------------------------+
 ```
 
@@ -331,12 +332,16 @@ Enrich system prompt with device state at each AI call:
 | Module | Current Role | Evolution |
 |--------|-------------|-----------|
 | `gateway` | Message queue skeleton | Inter-node routing (when multi-node ready) |
-| `scheduler` | Timed callbacks | + NVS persistence + deadline awareness |
-| `ai_engine` | Claude API client | + context injection + multi-format (optional) |
-| `tools/gpio` | GPIO read/write | + safety policy allowlist |
-| `tools/sched` | AI-created tasks | + persistence recovery |
+| `scheduler` | Timed callbacks + NVS persistence | + deadline awareness |
+| `ai_engine` | Claude API client + context injection | + multi-format (optional) |
+| `ai_memory` | RAM ring buffer + NVS long-term | + event journal layer |
+| `tools/gpio` | GPIO read/write + safety policy | + ADC/PWM support |
+| `tools/sched` | AI-created tasks + persistence | Stable |
+| `tools/audio` | ES8311 beep/volume/preset sounds | + recording, streaming |
 | `heartbeat` | Periodic AI check-in | + event log aggregation |
-| `swarm` | UDP heartbeat discovery | + capability bitmap → remote RPC → distributed perception → task migration |
+| `swarm` | UDP heartbeat + capability bitmap + remote RPC | + distributed perception → task migration |
+| `feishu` | WebSocket long connection IM | + multi-IM support |
+| `wifi_manager` | WiFi STA management | Stable |
 
 ## Resource Budget
 
