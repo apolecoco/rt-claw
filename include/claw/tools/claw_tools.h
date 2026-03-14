@@ -108,6 +108,12 @@ typedef void (*sched_reply_fn_t)(const char *target, const char *text);
 void sched_set_reply_context(sched_reply_fn_t fn, const char *target);
 
 /**
+ * Remove a scheduled AI task by name (scheduler + NVS).
+ * Callable from shell commands.
+ */
+int sched_tool_remove_by_name(const char *name);
+
+/**
  * Register network tools (http_request).
  */
 void claw_tools_register_net(void);

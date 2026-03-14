@@ -98,6 +98,9 @@ static sched_ai_ctx_t *ctx_alloc(void)
     return NULL;
 }
 
+/* Forward declaration — defined after ctx_free_by_name */
+static int sched_nvs_save(void);
+
 static void ctx_free_by_name(const char *name)
 {
     for (int i = 0; i < SCHED_AI_MAX; i++) {
@@ -107,6 +110,19 @@ static void ctx_free_by_name(const char *name)
             return;
         }
     }
+}
+
+int sched_tool_remove_by_name(const char *name)
+{
+    if (!name) {
+        return CLAW_ERROR;
+    }
+    if (sched_remove(name) != CLAW_OK) {
+        return CLAW_ERROR;
+    }
+    ctx_free_by_name(name);
+    sched_nvs_save();
+    return CLAW_OK;
 }
 
 /* Worker thread — runs AI calls with sufficient stack */

@@ -13,6 +13,7 @@
 #include "claw/shell/shell_commands.h"
 #include "claw/services/ai/ai_engine.h"
 #include "claw/services/ai/ai_memory.h"
+#include "claw/tools/claw_tools.h"
 #include "claw/services/im/feishu.h"
 
 #ifdef CONFIG_RTCLAW_SKILL_ENABLE
@@ -276,9 +277,19 @@ static void cmd_skill(int argc, char **argv)
 #ifdef CONFIG_RTCLAW_SCHED_ENABLE
 static void cmd_task(int argc, char **argv)
 {
-    (void)argc;
-    (void)argv;
-    sched_list();
+    if (argc < 2) {
+        sched_list();
+        return;
+    }
+    if (strcmp(argv[1], "rm") == 0 && argc >= 3) {
+        if (sched_tool_remove_by_name(argv[2]) == CLAW_OK) {
+            printf("task '%s' removed\n", argv[2]);
+        } else {
+            printf("task '%s' not found\n", argv[2]);
+        }
+    } else {
+        printf("usage: /task [rm <name>]\n");
+    }
 }
 #endif
 
@@ -308,7 +319,7 @@ const shell_cmd_t shell_common_commands[] = {
     SHELL_CMD("/skill",         cmd_skill,         "List or execute a skill"),
 #endif
 #ifdef CONFIG_RTCLAW_SCHED_ENABLE
-    SHELL_CMD("/task",          cmd_task,           "List scheduled tasks"),
+    SHELL_CMD("/task",          cmd_task,           "Tasks [rm <name>]"),
 #endif
 #ifdef CONFIG_RTCLAW_SWARM_ENABLE
     SHELL_CMD("/nodes",         cmd_nodes,         "Show swarm node table"),
