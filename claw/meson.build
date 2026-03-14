@@ -17,6 +17,11 @@ src_files = files(
     'tools/tool_net.c',
 )
 
+# Drivers (outside claw/ directory)
+src_files += files(
+    '../drivers/display/espressif/ssd1306_oled.c',
+)
+
 # Feature flags
 feature_defs = platform_defs
 if get_option('swarm')

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  *
  * WiFi board helpers — shared by all Espressif WiFi boards
- * (devkit, xiaozhi, etc.). Provides WiFi init and shell commands.
+ * (devkit, xiaozhi-xmini, etc.). Provides WiFi init and shell commands.
  */
 
 #include "claw_board.h"

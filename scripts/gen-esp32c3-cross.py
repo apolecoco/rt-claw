@@ -13,7 +13,7 @@
 # Examples:
 #   python3 scripts/gen-esp32c3-cross.py              # QEMU
 #   python3 scripts/gen-esp32c3-cross.py devkit        # devkit board
-#   python3 scripts/gen-esp32c3-cross.py xiaozhi       # xiaozhi board
+#   python3 scripts/gen-esp32c3-cross.py xiaozhi-xmini  # xiaozhi-xmini board
 
 import json
 import os

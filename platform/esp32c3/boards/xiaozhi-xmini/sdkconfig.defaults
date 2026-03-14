@@ -35,7 +35,7 @@ CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL=y
 
 # ---- Partition table ----
 CONFIG_PARTITION_TABLE_CUSTOM=y
-CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="boards/xiaozhi/partitions.csv"
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="boards/xiaozhi-xmini/partitions.csv"
 
 # ---- Console: USB Serial JTAG (xmini-c3 uses USB-JTAG CDC) ----
 CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y

@@ -11,7 +11,7 @@ All outputs go to `build/<platform>/`.
 ```bash
 # Unified entry (from project root)
 make build-esp32c3-qemu                # ESP32-C3 QEMU (default)
-make build-esp32c3-xiaozhi             # ESP32-C3 xiaozhi 16MB board
+make build-esp32c3-xiaozhi-xmini             # ESP32-C3 xiaozhi-xmini 16MB board
 make build-esp32c3-devkit              # ESP32-C3 generic 4MB devkit
 make vexpress-a9-qemu                  # Meson + SCons → build/vexpress-a9-qemu/
 make build-esp32s3-qemu                # Meson + idf.py (requires ESP-IDF)
@@ -53,12 +53,12 @@ Priority: meson option (`-Dai_api_key=...`) > env var > ESP-IDF menuconfig/sdkco
 make run-vexpress-a9-qemu              # build + launch QEMU
 make run-vexpress-a9-qemu GDB=1       # debug mode (GDB port 1234)
 
-# ESP32-C3 (board = qemu | devkit | xiaozhi)
+# ESP32-C3 (board = qemu | devkit | xiaozhi-xmini)
 make run-esp32c3-qemu                 # build + launch QEMU simulator
 make run-esp32c3-qemu GDB=1          # debug mode (GDB port 1234)
 make run-esp32c3-qemu GRAPHICS=1     # with LCD display window
-make flash-esp32c3-xiaozhi            # build + flash xiaozhi
-make run-esp32c3-xiaozhi              # serial monitor (hardware)
+make flash-esp32c3-xiaozhi-xmini            # build + flash xiaozhi-xmini
+make run-esp32c3-xiaozhi-xmini              # serial monitor (hardware)
 
 # ESP32-S3 (board = qemu | default)
 make run-esp32s3-qemu                  # build + launch QEMU
@@ -138,7 +138,7 @@ No unit test framework yet. Verify changes by:
 | `claw/tools/` | Tool Use framework |
 | `platform/common/espressif/` | Shared Espressif board helpers (WiFi init + shell) |
 | `platform/esp32c3/` | ESP32-C3 unified ESP-IDF project (all boards) |
-| `platform/esp32c3/boards/` | Board-specific configs (qemu, devkit, xiaozhi) |
+| `platform/esp32c3/boards/` | Board-specific configs (qemu, devkit, xiaozhi-xmini) |
 | `platform/esp32s3/` | ESP32-S3 unified ESP-IDF project (all boards) |
 | `platform/esp32s3/boards/` | Board-specific configs (qemu, default) |
 | `platform/vexpress-a9/` | RT-Thread BSP + Meson cross-file |

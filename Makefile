@@ -15,10 +15,10 @@ GRAPHICS ?= 0
 help:
 	@echo "rt-claw build system"
 	@echo ""
-	@echo "ESP32-C3 (board = qemu | devkit | xiaozhi):"
+	@echo "ESP32-C3 (board = qemu | devkit | xiaozhi-xmini):"
 	@echo "  make build-esp32c3-qemu         Build for QEMU (default)"
 	@echo "  make build-esp32c3-devkit    Build for devkit (4MB)"
-	@echo "  make build-esp32c3-xiaozhi      Build for xiaozhi (16MB)"
+	@echo "  make build-esp32c3-xiaozhi-xmini      Build for xiaozhi-xmini (16MB)"
 	@echo "  make run-esp32c3-qemu           Build + launch QEMU simulator"
 	@echo "  make run-esp32c3-<board>         Serial monitor (hardware)"
 	@echo "  make flash-esp32c3-<board>       Build + flash (hardware)"
@@ -97,7 +97,7 @@ run-vexpress-a9-qemu: vexpress-a9-qemu
 # Boards:
 #   qemu       QEMU virtual devkit (default, 4MB, OpenCores Ethernet)
 #   devkit     Generic 4MB devkit (WiFi)
-#   xiaozhi    XiaoZhi 16MB board (WiFi, OTA)
+#   xiaozhi-xmini    XiaoZhi 16MB board (WiFi, OTA)
 #
 ESP_C3_DIR := platform/esp32c3
 
@@ -108,13 +108,13 @@ run-esp32c3: run-esp32c3-qemu
 
 # ---- All boards: build ----
 
-.PHONY: build-esp32c3-qemu build-esp32c3-devkit build-esp32c3-xiaozhi
+.PHONY: build-esp32c3-qemu build-esp32c3-devkit build-esp32c3-xiaozhi-xmini
 build-esp32c3-qemu:    C3_BOARD = qemu
 build-esp32c3-qemu:    _c3-build
 build-esp32c3-devkit:  C3_BOARD = devkit
 build-esp32c3-devkit:  _c3-build
-build-esp32c3-xiaozhi: C3_BOARD = xiaozhi
-build-esp32c3-xiaozhi: _c3-build
+build-esp32c3-xiaozhi-xmini: C3_BOARD = xiaozhi-xmini
+build-esp32c3-xiaozhi-xmini: _c3-build
 
 # ---- QEMU: run (build + launch simulator) ----
 
@@ -146,17 +146,17 @@ flash-esp32c3-qemu:
 
 # ---- Hardware boards: flash + run ----
 
-.PHONY: flash-esp32c3-devkit flash-esp32c3-xiaozhi
+.PHONY: flash-esp32c3-devkit flash-esp32c3-xiaozhi-xmini
 flash-esp32c3-devkit:  build-esp32c3-devkit
 	cd $(ESP_C3_DIR) && idf.py -B $(BUILD_DIR)/esp32c3-devkit/idf flash
-flash-esp32c3-xiaozhi: build-esp32c3-xiaozhi
-	cd $(ESP_C3_DIR) && idf.py -B $(BUILD_DIR)/esp32c3-xiaozhi/idf flash
+flash-esp32c3-xiaozhi-xmini: build-esp32c3-xiaozhi-xmini
+	cd $(ESP_C3_DIR) && idf.py -B $(BUILD_DIR)/esp32c3-xiaozhi-xmini/idf flash
 
-.PHONY: run-esp32c3-devkit run-esp32c3-xiaozhi
+.PHONY: run-esp32c3-devkit run-esp32c3-xiaozhi-xmini
 run-esp32c3-devkit:
 	cd $(ESP_C3_DIR) && idf.py -B $(BUILD_DIR)/esp32c3-devkit/idf monitor
-run-esp32c3-xiaozhi:
-	cd $(ESP_C3_DIR) && idf.py -B $(BUILD_DIR)/esp32c3-xiaozhi/idf monitor
+run-esp32c3-xiaozhi-xmini:
+	cd $(ESP_C3_DIR) && idf.py -B $(BUILD_DIR)/esp32c3-xiaozhi-xmini/idf monitor
 
 # ---- Internal: shared build logic for all ESP32-C3 boards ----
 

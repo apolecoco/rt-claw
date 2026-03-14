@@ -646,6 +646,36 @@ void claw_lcd_progress(int percent)
     }
 }
 
+#elif !defined(CONFIG_RTCLAW_LCD_ENABLE)
+/*
+ * Default (weak) stubs — boards with OLED or other displays
+ * can override these in their board.c.
+ */
+
+int __attribute__((weak)) claw_lcd_init(void)
+{
+    return CLAW_ERROR;
+}
+
+int __attribute__((weak)) claw_lcd_available(void)
+{
+    return 0;
+}
+
+void claw_tools_register_lcd(void)
+{
+}
+
+void __attribute__((weak)) claw_lcd_status(const char *msg)
+{
+    (void)msg;
+}
+
+void __attribute__((weak)) claw_lcd_progress(int percent)
+{
+    (void)percent;
+}
+
 #else /* non-ESP-IDF */
 
 int claw_lcd_init(void)
