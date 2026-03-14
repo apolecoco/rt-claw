@@ -21,7 +21,7 @@
 #endif
 
 #ifdef CONFIG_RTCLAW_SHELL_ENABLE
-#include "driver/uart.h"
+#include "drivers/serial/espressif/console.h"
 #endif
 
 #define TAG         "main"
@@ -34,24 +34,24 @@
 static char *s_reply;
 
 /*
- * Read one line from UART with raw byte echo.
+ * Read one line with raw byte echo.
  * UTF-8 multi-byte characters (Chinese etc.) pass through correctly.
  */
-static int uart_read_line(char *buf, int size)
+static int shell_read_line(char *buf, int size)
 {
     int pos = 0;
     uint8_t ch;
 
     while (pos < size - 1) {
-        int n = uart_read_bytes(UART_NUM_0, &ch, 1, portMAX_DELAY);
+        int n = claw_console_read(&ch, 1, UINT32_MAX);
 
         if (n <= 0) {
             continue;
         }
         if (ch == '\r' || ch == '\n') {
-            uart_write_bytes(UART_NUM_0, "\r\n", 2);
+            claw_console_write("\r\n", 2);
             uint8_t trail;
-            uart_read_bytes(UART_NUM_0, &trail, 1, pdMS_TO_TICKS(20));
+            claw_console_read(&trail, 1, 20);
             break;
         }
         if (ch == '\b' || ch == 127) {
@@ -61,16 +61,15 @@ static int uart_read_line(char *buf, int size)
                     pos--;
                 }
                 if ((uint8_t)buf[pos] >= 0xE0) {
-                    uart_write_bytes(UART_NUM_0,
-                                     "\b \b\b \b", 6);
+                    claw_console_write("\b \b\b \b", 6);
                 } else {
-                    uart_write_bytes(UART_NUM_0, "\b \b", 3);
+                    claw_console_write("\b \b", 3);
                 }
             }
             continue;
         }
         buf[pos++] = (char)ch;
-        uart_write_bytes(UART_NUM_0, &ch, 1);
+        claw_console_write(&ch, 1);
     }
     buf[pos] = '\0';
     return pos;
@@ -194,7 +193,7 @@ static void shell_loop(void)
 {
     char input[INPUT_SIZE];
 
-    uart_driver_install(UART_NUM_0, 256, 0, 0, NULL, 0);
+    claw_console_init();
 
     s_reply = claw_malloc(REPLY_SIZE);
     if (!s_reply) {
@@ -211,7 +210,7 @@ static void shell_loop(void)
     while (1) {
         printf("\n" CLR_CYAN "<You> " CLR_RESET);
         fflush(stdout);
-        int len = uart_read_line(input, sizeof(input));
+        int len = shell_read_line(input, sizeof(input));
 
         if (len == 0) {
             continue;
