@@ -23,6 +23,15 @@
  */
 int ssd1306_init(int sda_pin, int scl_pin);
 
+/**
+ * Initialize SSD1306 on an existing I2C master bus.
+ * Use this when the I2C bus is shared with other devices
+ * (e.g. ES8311 audio codec on xmini-c3).
+ * @param bus  I2C master bus handle (from i2c_new_master_bus)
+ * @return 0 on success
+ */
+int ssd1306_init_on_bus(void *bus);
+
 /** Clear the entire display. */
 void ssd1306_clear(void);
 

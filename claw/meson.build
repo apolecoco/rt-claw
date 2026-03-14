@@ -20,6 +20,7 @@ src_files = files(
 # Drivers (outside claw/ directory)
 src_files += files(
     '../drivers/display/espressif/ssd1306_oled.c',
+    '../drivers/audio/espressif/es8311_audio.c',
 )
 
 # Feature flags

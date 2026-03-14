@@ -128,23 +128,9 @@ static esp_lcd_panel_io_handle_t s_panel_io;
 static uint8_t s_fb[SSD1306_WIDTH * SSD1306_PAGES];
 static int s_initialized;
 
-int ssd1306_init(int sda_pin, int scl_pin)
+static int ssd1306_init_panel(i2c_master_bus_handle_t bus)
 {
-    /* I2C bus */
-    i2c_master_bus_config_t bus_cfg = {
-        .i2c_port = I2C_NUM_0,
-        .sda_io_num = sda_pin,
-        .scl_io_num = scl_pin,
-        .clk_source = I2C_CLK_SRC_DEFAULT,
-        .glitch_ignore_cnt = 7,
-        .flags.enable_internal_pullup = 1,
-    };
-    i2c_master_bus_handle_t bus;
-    esp_err_t err = i2c_new_master_bus(&bus_cfg, &bus);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "I2C bus init: %s", esp_err_to_name(err));
-        return -1;
-    }
+    esp_err_t err;
 
     /* Panel IO (I2C) */
     esp_lcd_panel_io_i2c_config_t io_cfg = {
@@ -186,9 +172,32 @@ int ssd1306_init(int sda_pin, int scl_pin)
     ssd1306_flush();
 
     s_initialized = 1;
-    ESP_LOGI(TAG, "128x64 OLED ready (I2C 0x%02X, SDA=%d SCL=%d)",
-             I2C_ADDR, sda_pin, scl_pin);
+    ESP_LOGI(TAG, "128x64 OLED ready (I2C 0x%02X)", I2C_ADDR);
     return 0;
+}
+
+int ssd1306_init(int sda_pin, int scl_pin)
+{
+    i2c_master_bus_config_t bus_cfg = {
+        .i2c_port = I2C_NUM_0,
+        .sda_io_num = sda_pin,
+        .scl_io_num = scl_pin,
+        .clk_source = I2C_CLK_SRC_DEFAULT,
+        .glitch_ignore_cnt = 7,
+        .flags.enable_internal_pullup = 1,
+    };
+    i2c_master_bus_handle_t bus;
+    esp_err_t err = i2c_new_master_bus(&bus_cfg, &bus);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "I2C bus init: %s", esp_err_to_name(err));
+        return -1;
+    }
+    return ssd1306_init_panel(bus);
+}
+
+int ssd1306_init_on_bus(void *bus)
+{
+    return ssd1306_init_panel((i2c_master_bus_handle_t)bus);
 }
 
 void ssd1306_clear(void)
