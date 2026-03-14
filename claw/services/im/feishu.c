@@ -47,7 +47,7 @@ static char s_app_secret[FEISHU_CRED_MAX];
 #define MSG_SEND_URL "https://open.feishu.cn/open-apis/im/v1/messages"
 
 #define TOKEN_BUF_SIZE      256
-#define RESP_BUF_SIZE       4096
+#define RESP_BUF_SIZE       2048
 #define REPLY_BUF_SIZE      4096
 #define PING_INTERVAL_MS    (120 * 1000)
 #define WS_RECONNECT_MS     5000
@@ -538,12 +538,12 @@ static int send_reply(const char *chat_id, const char *text)
     char url[128];
     snprintf(url, sizeof(url), "%s?receive_id_type=chat_id", MSG_SEND_URL);
 
-    char resp[512];
+    char resp[1024];
     int ret = http_post_json(url, auth, body_str, resp, sizeof(resp));
     claw_free(body_str);
 
     if (ret != CLAW_OK) {
-        CLAW_LOGE(TAG, "send reply failed");
+        CLAW_LOGE(TAG, "send reply failed: %.200s", resp);
     }
     return ret;
 }
@@ -591,30 +591,82 @@ static void sched_reply_to_feishu(const char *target, const char *text)
 }
 
 /* ------------------------------------------------------------------ */
-/*  AI worker — run ai_chat() off the websocket callback stack         */
+/*  Message bus — inbound queue (WS→AI) + outbound queue (AI→HTTP)     */
 /* ------------------------------------------------------------------ */
 
-#define MSG_TEXT_MAX   512
-#define CHAT_ID_MAX   64
-#define WORKER_STACK   16384
+#define MSG_TEXT_MAX   1024
+#define CHAT_ID_MAX   128
+#define MSG_ID_MAX    128
+#define WORKER_STACK  16384
+#define OUTBOUND_STACK 8192
 
-#define MSG_ID_MAX    64
+#define INBOUND_DEPTH  4
+#define OUTBOUND_DEPTH 4
 
-/* Worker states: only accept new messages when IDLE */
-#define WORKER_IDLE       0
-#define WORKER_PENDING    1
-#define WORKER_PROCESSING 2
-
+/* Inbound: from Feishu WebSocket to AI worker */
 typedef struct {
     char text[MSG_TEXT_MAX];
     char chat_id[CHAT_ID_MAX];
     char msg_id[MSG_ID_MAX];
-    int  state;
-} feishu_msg_t;
+} feishu_inbound_t;
 
-static feishu_msg_t s_msg;
-static claw_sem_t   s_msg_sem;
-static claw_mutex_t s_msg_lock;
+/* Outbound: from AI worker to HTTP sender */
+typedef struct {
+    char chat_id[CHAT_ID_MAX];
+    char *text;     /* heap-allocated, consumer frees */
+} feishu_outbound_t;
+
+static claw_mq_t s_inbound_q;
+static claw_mq_t s_outbound_q;
+
+/* ---- Outbound dispatch thread ---- */
+
+static void outbound_thread(void *arg)
+{
+    (void)arg;
+    feishu_outbound_t msg;
+
+    while (1) {
+        if (claw_mq_recv(s_outbound_q, &msg, sizeof(msg),
+                         CLAW_WAIT_FOREVER) != CLAW_OK) {
+            continue;
+        }
+        if (!msg.text) {
+            continue;
+        }
+
+        CLAW_LOGI(TAG, "[%lu ms] >>> sending: \"%.80s%s\"",
+                  (unsigned long)claw_tick_ms(), msg.text,
+                  strlen(msg.text) > 80 ? "..." : "");
+        send_reply(msg.chat_id, msg.text);
+        CLAW_LOGI(TAG, "[%lu ms] >>> sent",
+                  (unsigned long)claw_tick_ms());
+        claw_free(msg.text);
+    }
+}
+
+static void enqueue_reply(const char *chat_id, const char *text)
+{
+    size_t len = strlen(text);
+    char *copy = claw_malloc(len + 1);
+    if (!copy) {
+        CLAW_LOGE(TAG, "outbound: no memory for reply");
+        return;
+    }
+    memcpy(copy, text, len + 1);
+
+    feishu_outbound_t msg;
+    snprintf(msg.chat_id, sizeof(msg.chat_id), "%s", chat_id);
+    msg.text = copy;
+
+    if (claw_mq_send(s_outbound_q, &msg, sizeof(msg), 1000)
+            != CLAW_OK) {
+        CLAW_LOGW(TAG, "outbound queue full, dropping reply");
+        claw_free(copy);
+    }
+}
+
+/* ---- AI worker thread ---- */
 
 static void ai_worker_thread(void *arg)
 {
@@ -625,29 +677,19 @@ static void ai_worker_thread(void *arg)
         return;
     }
 
+    feishu_inbound_t in;
+
     while (1) {
-        claw_sem_take(s_msg_sem, CLAW_WAIT_FOREVER);
-
-        claw_mutex_lock(s_msg_lock, CLAW_WAIT_FOREVER);
-        char text[MSG_TEXT_MAX];
-        char chat_id[CHAT_ID_MAX];
-        char msg_id[MSG_ID_MAX];
-        memcpy(text, s_msg.text, sizeof(text));
-        memcpy(chat_id, s_msg.chat_id, sizeof(chat_id));
-        memcpy(msg_id, s_msg.msg_id, sizeof(msg_id));
-        s_msg.state = WORKER_PROCESSING;
-        claw_mutex_unlock(s_msg_lock);
-
-        /* React with "Typing" emoji so user knows we're working on it */
-        if (msg_id[0] != '\0') {
-            add_reaction(msg_id, "Typing");
+        if (claw_mq_recv(s_inbound_q, &in, sizeof(in),
+                         CLAW_WAIT_FOREVER) != CLAW_OK) {
+            continue;
         }
 
-        /*
-         * Tell the AI which channel is active so it produces
-         * appropriate prompts for scheduled tasks, and set the
-         * reply context so results route back to this chat.
-         */
+        /* React with "Typing" emoji */
+        if (in.msg_id[0] != '\0') {
+            add_reaction(in.msg_id, "Typing");
+        }
+
         ai_set_channel_hint(
             " You are communicating via Feishu IM."
             " All outputs (including scheduled task results)"
@@ -657,33 +699,22 @@ static void ai_worker_thread(void *arg)
             " IMPORTANT: Feishu does NOT render markdown tables."
             " Never use table syntax (| --- |). Use bullet lists"
             " or structured text instead.");
-        sched_set_reply_context(sched_reply_to_feishu, chat_id);
+        sched_set_reply_context(sched_reply_to_feishu, in.chat_id);
 
-        CLAW_LOGI(TAG, "[%lu ms] ... ai_chat start: \"%s\"",
-                  (unsigned long)claw_tick_ms(), text);
-        int ret = ai_chat(text, reply, REPLY_BUF_SIZE);
-        CLAW_LOGI(TAG, "[%lu ms] ... ai_chat done, ret=%d",
+        CLAW_LOGI(TAG, "[%lu ms] ... ai_chat: \"%s\"",
+                  (unsigned long)claw_tick_ms(), in.text);
+        int ret = ai_chat(in.text, reply, REPLY_BUF_SIZE);
+        CLAW_LOGI(TAG, "[%lu ms] ... ai_chat ret=%d",
                   (unsigned long)claw_tick_ms(), ret);
 
         ai_set_channel_hint(NULL);
         sched_set_reply_context(NULL, NULL);
-        if (ret == CLAW_OK && reply[0] != '\0') {
-            CLAW_LOGI(TAG, "[%lu ms] >>> sending reply: \"%.120s%s\"",
-                      (unsigned long)claw_tick_ms(), reply,
-                      strlen(reply) > 120 ? "..." : "");
-            send_reply(chat_id, reply);
-            CLAW_LOGI(TAG, "[%lu ms] >>> reply sent",
-                      (unsigned long)claw_tick_ms());
-        } else {
-            CLAW_LOGW(TAG, "[%lu ms] >>> sending error reply",
-                      (unsigned long)claw_tick_ms());
-            send_reply(chat_id, "[rt-claw] AI engine error");
-        }
 
-        /* Mark idle — now ready to accept new messages */
-        claw_mutex_lock(s_msg_lock, CLAW_WAIT_FOREVER);
-        s_msg.state = WORKER_IDLE;
-        claw_mutex_unlock(s_msg_lock);
+        if (ret == CLAW_OK && reply[0] != '\0') {
+            enqueue_reply(in.chat_id, reply);
+        } else {
+            enqueue_reply(in.chat_id, "[rt-claw] AI engine error");
+        }
     }
 }
 
@@ -735,25 +766,22 @@ static void handle_message_event(cJSON *event)
         return;
     }
 
-    /* Post to worker thread — only if idle (not pending or processing) */
-    claw_mutex_lock(s_msg_lock, CLAW_WAIT_FOREVER);
-    if (s_msg.state != WORKER_IDLE) {
-        claw_mutex_unlock(s_msg_lock);
-        CLAW_LOGW(TAG, "[%lu ms] !!! worker busy (state=%d), "
-                  "dropping msg_id=%s",
-                  (unsigned long)claw_tick_ms(), s_msg.state, mid);
-        cJSON_Delete(content);
-        return;
-    }
-    snprintf(s_msg.text, MSG_TEXT_MAX, "%s", user_msg);
-    snprintf(s_msg.chat_id, CHAT_ID_MAX, "%s", chat_id->valuestring);
-    snprintf(s_msg.msg_id, MSG_ID_MAX, "%s", mid);
-    s_msg.state = WORKER_PENDING;
-    claw_mutex_unlock(s_msg_lock);
+    /* Push to inbound queue — non-blocking, drop if full */
+    feishu_inbound_t in;
+    snprintf(in.text, sizeof(in.text), "%s", user_msg);
+    snprintf(in.chat_id, sizeof(in.chat_id), "%s",
+             chat_id->valuestring);
+    snprintf(in.msg_id, sizeof(in.msg_id), "%s", mid);
 
-    CLAW_LOGI(TAG, "[%lu ms] --> queued to ai worker",
-              (unsigned long)claw_tick_ms());
-    claw_sem_give(s_msg_sem);
+    if (claw_mq_send(s_inbound_q, &in, sizeof(in), 0) != CLAW_OK) {
+        CLAW_LOGW(TAG, "[%lu ms] !!! inbound queue full, "
+                  "dropping msg_id=%s",
+                  (unsigned long)claw_tick_ms(), mid);
+    } else {
+        CLAW_LOGI(TAG, "[%lu ms] --> queued (depth=%d)",
+                  (unsigned long)claw_tick_ms(), INBOUND_DEPTH);
+    }
+
     cJSON_Delete(content);
 }
 
@@ -1065,13 +1093,17 @@ int feishu_init(void)
     if (!s_lock) {
         return CLAW_ERROR;
     }
-    s_msg_sem = claw_sem_create("fs_msg", 0);
-    s_msg_lock = claw_mutex_create("fs_msg");
-    if (!s_msg_sem || !s_msg_lock) {
-        CLAW_LOGE(TAG, "sem/mutex create failed");
+
+    s_inbound_q = claw_mq_create("fs_in",
+                                  sizeof(feishu_inbound_t),
+                                  INBOUND_DEPTH);
+    s_outbound_q = claw_mq_create("fs_out",
+                                   sizeof(feishu_outbound_t),
+                                   OUTBOUND_DEPTH);
+    if (!s_inbound_q || !s_outbound_q) {
+        CLAW_LOGE(TAG, "message queue create failed");
         return CLAW_ERROR;
     }
-    memset(&s_msg, 0, sizeof(s_msg));
 
     s_token[0] = '\0';
     s_ws_client = NULL;
@@ -1082,7 +1114,7 @@ int feishu_init(void)
 
 int feishu_start(void)
 {
-    /* AI worker thread — handles ai_chat() off the websocket stack */
+    /* AI worker: inbound queue → ai_chat → outbound queue */
     claw_thread_t w = claw_thread_create("fs_ai", ai_worker_thread,
                                           NULL, WORKER_STACK, 10);
     if (!w) {
@@ -1090,6 +1122,15 @@ int feishu_start(void)
         return CLAW_ERROR;
     }
 
+    /* Outbound dispatch: outbound queue → send_reply (HTTP) */
+    claw_thread_t o = claw_thread_create("fs_out", outbound_thread,
+                                          NULL, OUTBOUND_STACK, 10);
+    if (!o) {
+        CLAW_LOGE(TAG, "failed to create outbound thread");
+        return CLAW_ERROR;
+    }
+
+    /* Feishu WebSocket connection thread */
     claw_thread_t t = claw_thread_create("feishu", feishu_thread, NULL,
                                          8192, 10);
     if (!t) {
