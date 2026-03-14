@@ -42,4 +42,12 @@ void es8311_audio_beep(int freq_hz, int duration_ms, int volume);
  */
 void es8311_audio_write(const int16_t *data, size_t samples);
 
+/**
+ * Play a named preset sound effect.
+ * Available names: "success", "error", "notify", "alert",
+ *                  "startup", "click"
+ * @return 0 on success, -1 if name unknown
+ */
+int es8311_audio_play_sound(const char *name);
+
 #endif /* DRIVERS_AUDIO_ES8311_AUDIO_H */

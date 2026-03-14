@@ -143,7 +143,7 @@ void board_early_init(void)
         i2c_master_probe(bus_audio, ES8311_ADDR, 200) == ESP_OK) {
         if (es8311_audio_init(bus_audio, pa_pin) == 0) {
             s_audio_ready = 1;
-            es8311_audio_beep(1000, 100, 50);
+            es8311_audio_play_sound("startup");
         }
     } else {
         printf("ES8311 not found, audio disabled\n");

@@ -135,14 +135,50 @@ static const char schema_volume[] =
     "\"description\":\"Speaker volume 0-100\"}},"
     "\"required\":[\"volume\"]}";
 
+static int tool_audio_play_sound(const cJSON *params, cJSON *result)
+{
+    cJSON *name_j = cJSON_GetObjectItem(params, "name");
+    if (!name_j || !cJSON_IsString(name_j)) {
+        cJSON_AddStringToObject(result, "error", "missing name");
+        return CLAW_ERROR;
+    }
+
+    if (es8311_audio_play_sound(name_j->valuestring) != 0) {
+        cJSON_AddStringToObject(result, "error",
+                                "unknown sound name");
+        return CLAW_ERROR;
+    }
+
+    cJSON_AddStringToObject(result, "status", "ok");
+    char msg[48];
+    snprintf(msg, sizeof(msg), "played sound: %s",
+             name_j->valuestring);
+    cJSON_AddStringToObject(result, "message", msg);
+    return CLAW_OK;
+}
+
+static const char schema_play_sound[] =
+    "{\"type\":\"object\","
+    "\"properties\":{"
+    "\"name\":{\"type\":\"string\","
+    "\"enum\":[\"success\",\"error\",\"notify\","
+    "\"alert\",\"startup\",\"click\"],"
+    "\"description\":\"Preset sound effect name\"}},"
+    "\"required\":[\"name\"]}";
+
 static void claw_tools_register_audio(void)
 {
     claw_tool_register("audio_beep",
-        "Play a tone through the speaker. Use for notifications, "
-        "alerts, confirmation sounds, or musical notes. "
-        "Can play melodies by calling multiple times with "
-        "different frequencies.",
+        "Play a single tone. Use for custom frequencies.",
         schema_beep, tool_audio_beep);
+
+    claw_tool_register("audio_play_sound",
+        "Play a preset sound effect. Available sounds: "
+        "success (task done), error (something failed), "
+        "notify (new message), alert (urgent warning), "
+        "startup (boot jingle), click (button feedback). "
+        "Use this for common feedback instead of audio_beep.",
+        schema_play_sound, tool_audio_play_sound);
 
     claw_tool_register("audio_volume",
         "Set the speaker volume (0-100).",

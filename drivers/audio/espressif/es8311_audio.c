@@ -244,6 +244,100 @@ void es8311_audio_beep(int freq_hz, int duration_ms, int volume)
     es8311_audio_enable_output(0);
 }
 
+/* ---- Preset sound effects ---- */
+
+typedef struct {
+    int freq;
+    int ms;
+} note_t;
+
+static void play_melody(const note_t *notes, int count, int vol)
+{
+    es8311_audio_set_volume(vol);
+    es8311_audio_enable_output(1);
+
+    for (int i = 0; i < count; i++) {
+        if (notes[i].freq == 0) {
+            /* Silence (rest) */
+            vTaskDelay(pdMS_TO_TICKS(notes[i].ms));
+        } else {
+            es8311_audio_beep(notes[i].freq, notes[i].ms, vol);
+        }
+    }
+
+    es8311_audio_enable_output(0);
+}
+
+int es8311_audio_play_sound(const char *name)
+{
+    if (!s_initialized || !name) {
+        return -1;
+    }
+
+    /* Success: ascending C5-E5 */
+    if (strcmp(name, "success") == 0) {
+        static const note_t melody[] = {
+            {523, 120}, {0, 30}, {659, 200},
+        };
+        play_melody(melody, 3, 60);
+        return 0;
+    }
+
+    /* Error: descending buzz */
+    if (strcmp(name, "error") == 0) {
+        static const note_t melody[] = {
+            {400, 150}, {0, 30}, {250, 300},
+        };
+        play_melody(melody, 3, 60);
+        return 0;
+    }
+
+    /* Notify: triple short beep */
+    if (strcmp(name, "notify") == 0) {
+        static const note_t melody[] = {
+            {880, 80}, {0, 60},
+            {880, 80}, {0, 60},
+            {880, 80},
+        };
+        play_melody(melody, 5, 50);
+        return 0;
+    }
+
+    /* Alert: urgent siren */
+    if (strcmp(name, "alert") == 0) {
+        static const note_t melody[] = {
+            {1200, 150}, {800, 150},
+            {1200, 150}, {800, 150},
+            {1200, 150}, {800, 150},
+        };
+        play_melody(melody, 6, 70);
+        return 0;
+    }
+
+    /* Startup: musical boot jingle C-E-G-C' */
+    if (strcmp(name, "startup") == 0) {
+        static const note_t melody[] = {
+            {523, 100}, {0, 20},
+            {659, 100}, {0, 20},
+            {784, 100}, {0, 20},
+            {1047, 200},
+        };
+        play_melody(melody, 7, 55);
+        return 0;
+    }
+
+    /* Click: short tick */
+    if (strcmp(name, "click") == 0) {
+        static const note_t melody[] = {
+            {1500, 30},
+        };
+        play_melody(melody, 1, 40);
+        return 0;
+    }
+
+    return -1;
+}
+
 #else /* non-ESP-IDF stubs */
 
 int  es8311_audio_init(void *bus, int pa) { (void)bus; (void)pa; return -1; }
@@ -251,5 +345,6 @@ void es8311_audio_set_volume(int v) { (void)v; }
 void es8311_audio_enable_output(int e) { (void)e; }
 void es8311_audio_write(const int16_t *d, size_t s) { (void)d; (void)s; }
 void es8311_audio_beep(int f, int d, int v) { (void)f; (void)d; (void)v; }
+int  es8311_audio_play_sound(const char *n) { (void)n; return -1; }
 
 #endif
