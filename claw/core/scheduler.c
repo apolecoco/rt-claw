@@ -186,6 +186,40 @@ void sched_list(void)
     claw_mutex_unlock(s_lock);
 }
 
+int sched_list_to_buf(char *buf, size_t size)
+{
+    if (!buf || size == 0) {
+        return 0;
+    }
+
+    int off = 0;
+
+    claw_mutex_lock(s_lock, CLAW_WAIT_FOREVER);
+
+    int count = 0;
+    for (int i = 0; i < CLAW_SCHED_MAX_TASKS; i++) {
+        if (s_tasks[i].active) {
+            count++;
+        }
+    }
+
+    off += snprintf(buf + off, size - off,
+                    "%d active task(s):\n", count);
+    for (int i = 0; i < CLAW_SCHED_MAX_TASKS; i++) {
+        if (s_tasks[i].active && (size_t)off < size - 1) {
+            sched_task_t *t = &s_tasks[i];
+            off += snprintf(buf + off, size - off,
+                            "- %s: every %us, remaining=%d\n",
+                            t->name,
+                            (unsigned)(t->interval_ms / 1000),
+                            (int)t->remaining);
+        }
+    }
+
+    claw_mutex_unlock(s_lock);
+    return off;
+}
+
 int sched_task_count(void)
 {
     int count = 0;

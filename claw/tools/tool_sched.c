@@ -440,6 +440,20 @@ static int tool_remove_task(const cJSON *params, cJSON *result)
     return CLAW_OK;
 }
 
+static int tool_list_tasks(const cJSON *params, cJSON *result)
+{
+    (void)params;
+    char buf[512];
+    sched_list_to_buf(buf, sizeof(buf));
+    cJSON_AddStringToObject(result, "status", "ok");
+    cJSON_AddStringToObject(result, "tasks", buf);
+    cJSON_AddNumberToObject(result, "count", sched_task_count());
+    return CLAW_OK;
+}
+
+static const char schema_list_tasks[] =
+    "{\"type\":\"object\",\"properties\":{}}";
+
 static const char schema_schedule[] =
     "{\"type\":\"object\","
     "\"properties\":{"
@@ -474,6 +488,12 @@ void claw_tools_register_sched(void)
 
     claw_thread_create("sched_ai", ai_worker_thread, NULL,
                        WORKER_STACK, WORKER_PRIO);
+
+    claw_tool_register("list_tasks",
+        "List all active scheduled tasks with their names, "
+        "intervals, and remaining execution counts. Call this "
+        "before removing tasks to see what's available.",
+        schema_list_tasks, tool_list_tasks);
 
     claw_tool_register("schedule_task",
         "Schedule a recurring AI task. The prompt will be executed "

@@ -274,7 +274,7 @@ static void cmd_skill(int argc, char **argv)
 #endif
 
 #ifdef CONFIG_RTCLAW_SCHED_ENABLE
-static void cmd_sched(int argc, char **argv)
+static void cmd_task(int argc, char **argv)
 {
     (void)argc;
     (void)argv;
@@ -308,7 +308,7 @@ const shell_cmd_t shell_common_commands[] = {
     SHELL_CMD("/skill",         cmd_skill,         "List or execute a skill"),
 #endif
 #ifdef CONFIG_RTCLAW_SCHED_ENABLE
-    SHELL_CMD("/sched",         cmd_sched,         "List scheduled tasks"),
+    SHELL_CMD("/task",          cmd_task,           "List scheduled tasks"),
 #endif
 #ifdef CONFIG_RTCLAW_SWARM_ENABLE
     SHELL_CMD("/nodes",         cmd_nodes,         "Show swarm node table"),

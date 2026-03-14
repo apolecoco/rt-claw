@@ -20,4 +20,10 @@ int  sched_remove(const char *name);
 void sched_list(void);
 int  sched_task_count(void);
 
+/**
+ * Write task list into a text buffer (for LLM tool output).
+ * Returns bytes written (excluding null terminator).
+ */
+int  sched_list_to_buf(char *buf, size_t size);
+
 #endif /* CLAW_SCHEDULER_H */
