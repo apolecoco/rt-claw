@@ -8,10 +8,14 @@
 #ifdef CONFIG_RTCLAW_SKILL_ENABLE
 #include "claw/services/ai/ai_skill.h"
 #endif
+#include "drivers/audio/espressif/es8311_audio.h"
 
 #include <string.h>
+#include <stdio.h>
 
 #define TAG "tools"
+
+static void claw_tools_register_audio(void);
 
 static claw_tool_t s_tools[CLAW_TOOL_MAX];
 static int s_tool_count;
@@ -40,8 +44,109 @@ int claw_tools_init(void)
     claw_tools_register_skill();
 #endif
 
+    /* Audio tools (always register — stubs on non-ESP-IDF) */
+    claw_tools_register_audio();
+
     CLAW_LOGI(TAG, "%d tools registered", s_tool_count);
     return CLAW_OK;
+}
+
+/* ---- Audio tools ---- */
+
+static int tool_audio_beep(const cJSON *params, cJSON *result)
+{
+    int freq = 1000;
+    int duration = 200;
+    int volume = 60;
+
+    cJSON *f = cJSON_GetObjectItem(params, "frequency_hz");
+    cJSON *d = cJSON_GetObjectItem(params, "duration_ms");
+    cJSON *v = cJSON_GetObjectItem(params, "volume");
+
+    if (f && cJSON_IsNumber(f)) {
+        freq = f->valueint;
+    }
+    if (d && cJSON_IsNumber(d)) {
+        duration = d->valueint;
+    }
+    if (v && cJSON_IsNumber(v)) {
+        volume = v->valueint;
+    }
+
+    if (freq < 100 || freq > 8000) {
+        cJSON_AddStringToObject(result, "error",
+                                "frequency must be 100-8000 Hz");
+        return CLAW_ERROR;
+    }
+    if (duration < 50 || duration > 5000) {
+        cJSON_AddStringToObject(result, "error",
+                                "duration must be 50-5000 ms");
+        return CLAW_ERROR;
+    }
+
+    es8311_audio_beep(freq, duration, volume);
+
+    cJSON_AddStringToObject(result, "status", "ok");
+    char msg[64];
+    snprintf(msg, sizeof(msg), "played %dHz for %dms at vol %d",
+             freq, duration, volume);
+    cJSON_AddStringToObject(result, "message", msg);
+    return CLAW_OK;
+}
+
+static int tool_audio_volume(const cJSON *params, cJSON *result)
+{
+    cJSON *v = cJSON_GetObjectItem(params, "volume");
+    if (!v || !cJSON_IsNumber(v)) {
+        cJSON_AddStringToObject(result, "error", "missing volume");
+        return CLAW_ERROR;
+    }
+
+    int vol = v->valueint;
+    if (vol < 0 || vol > 100) {
+        cJSON_AddStringToObject(result, "error",
+                                "volume must be 0-100");
+        return CLAW_ERROR;
+    }
+
+    es8311_audio_set_volume(vol);
+    cJSON_AddStringToObject(result, "status", "ok");
+    char msg[32];
+    snprintf(msg, sizeof(msg), "volume set to %d", vol);
+    cJSON_AddStringToObject(result, "message", msg);
+    return CLAW_OK;
+}
+
+static const char schema_beep[] =
+    "{\"type\":\"object\","
+    "\"properties\":{"
+    "\"frequency_hz\":{\"type\":\"integer\","
+    "\"description\":\"Tone frequency 100-8000 Hz (default 1000)\"},"
+    "\"duration_ms\":{\"type\":\"integer\","
+    "\"description\":\"Duration 50-5000 ms (default 200)\"},"
+    "\"volume\":{\"type\":\"integer\","
+    "\"description\":\"Volume 0-100 (default 60)\"}},"
+    "\"required\":[]}";
+
+static const char schema_volume[] =
+    "{\"type\":\"object\","
+    "\"properties\":{"
+    "\"volume\":{\"type\":\"integer\","
+    "\"description\":\"Speaker volume 0-100\"}},"
+    "\"required\":[\"volume\"]}";
+
+static void claw_tools_register_audio(void)
+{
+    claw_tool_register("audio_beep",
+        "Play a tone through the speaker. Use for notifications, "
+        "alerts, confirmation sounds, or musical notes. "
+        "Can play melodies by calling multiple times with "
+        "different frequencies.",
+        schema_beep, tool_audio_beep);
+
+    claw_tool_register("audio_volume",
+        "Set the speaker volume (0-100).",
+        schema_volume, tool_audio_volume);
 }
 
 int claw_tool_register(const char *name, const char *description,
