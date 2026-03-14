@@ -268,6 +268,155 @@ static int tool_gpio_config(const cJSON *params, cJSON *result)
     return (err == ESP_OK) ? CLAW_OK : CLAW_ERROR;
 }
 
+/* ---- GPIO blink — local timer, no AI API calls ---- */
+
+#define BLINK_MAX_STEPS 16
+
+static struct {
+    int      pin;
+    int      active;
+    int      step;
+    int      count;
+    int      repeat;
+    uint32_t intervals[BLINK_MAX_STEPS];
+} s_blink;
+
+static claw_timer_t s_blink_timer;
+
+static void blink_timer_cb(void *arg)
+{
+    (void)arg;
+    if (!s_blink.active) {
+        return;
+    }
+
+    /* Toggle GPIO */
+    int level = gpio_get_level(s_blink.pin);
+    gpio_set_level(s_blink.pin, level ? 0 : 1);
+
+    /* Advance to next interval */
+    s_blink.step++;
+    if (s_blink.step >= s_blink.count) {
+        if (s_blink.repeat) {
+            s_blink.step = 0;
+        } else {
+            s_blink.active = 0;
+            claw_timer_stop(s_blink_timer);
+            CLAW_LOGI(TAG, "blink finished on GPIO %d", s_blink.pin);
+            return;
+        }
+    }
+
+    /* Restart timer with next interval */
+    claw_timer_stop(s_blink_timer);
+    claw_timer_delete(s_blink_timer);
+    s_blink_timer = claw_timer_create("blink", blink_timer_cb, NULL,
+                                       s_blink.intervals[s_blink.step],
+                                       0);
+    if (s_blink_timer) {
+        claw_timer_start(s_blink_timer);
+    }
+}
+
+static int tool_gpio_blink(const cJSON *params, cJSON *result)
+{
+    cJSON *pin_j = cJSON_GetObjectItem(params, "pin");
+    cJSON *intervals_j = cJSON_GetObjectItem(params, "intervals_ms");
+    cJSON *repeat_j = cJSON_GetObjectItem(params, "repeat");
+
+    if (!pin_j || !cJSON_IsNumber(pin_j) ||
+        !intervals_j || !cJSON_IsArray(intervals_j)) {
+        cJSON_AddStringToObject(result, "error",
+                                "missing pin or intervals_ms");
+        return CLAW_ERROR;
+    }
+
+    int pin = pin_j->valueint;
+    if (pin < 0 || pin >= GPIO_PIN_MAX) {
+        cJSON_AddStringToObject(result, "error", "pin out of range");
+        return CLAW_ERROR;
+    }
+    if (!gpio_check_policy(pin, GPIO_POLICY_OUTPUT)) {
+        return gpio_policy_deny(pin, "blink", result);
+    }
+
+    /* Stop any existing blink */
+    if (s_blink.active && s_blink_timer) {
+        claw_timer_stop(s_blink_timer);
+        claw_timer_delete(s_blink_timer);
+        s_blink_timer = NULL;
+    }
+
+    /* Parse interval array */
+    int n = cJSON_GetArraySize(intervals_j);
+    if (n <= 0 || n > BLINK_MAX_STEPS) {
+        cJSON_AddStringToObject(result, "error",
+                                "intervals_ms must have 1-16 entries");
+        return CLAW_ERROR;
+    }
+
+    for (int i = 0; i < n; i++) {
+        cJSON *v = cJSON_GetArrayItem(intervals_j, i);
+        s_blink.intervals[i] = (v && cJSON_IsNumber(v))
+                                ? (uint32_t)v->valueint : 500;
+        if (s_blink.intervals[i] < 50) {
+            s_blink.intervals[i] = 50;
+        }
+    }
+
+    /* Configure pin as output */
+    gpio_config_t cfg = {
+        .pin_bit_mask = (1ULL << pin),
+        .mode = GPIO_MODE_OUTPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+    gpio_config(&cfg);
+
+    s_blink.pin = pin;
+    s_blink.count = n;
+    s_blink.step = 0;
+    s_blink.repeat = (repeat_j && cJSON_IsTrue(repeat_j)) ? 1 : 1;
+    s_blink.active = 1;
+
+    /* Start with first interval */
+    s_blink_timer = claw_timer_create("blink", blink_timer_cb, NULL,
+                                       s_blink.intervals[0], 0);
+    if (!s_blink_timer) {
+        s_blink.active = 0;
+        cJSON_AddStringToObject(result, "error",
+                                "timer create failed");
+        return CLAW_ERROR;
+    }
+    claw_timer_start(s_blink_timer);
+
+    char msg[128];
+    snprintf(msg, sizeof(msg),
+             "GPIO %d blinking with %d intervals, repeat=%s",
+             pin, n, s_blink.repeat ? "yes" : "no");
+    cJSON_AddStringToObject(result, "status", "ok");
+    cJSON_AddStringToObject(result, "message", msg);
+    CLAW_LOGI(TAG, "%s", msg);
+    return CLAW_OK;
+}
+
+static int tool_gpio_blink_stop(const cJSON *params, cJSON *result)
+{
+    (void)params;
+    if (s_blink.active && s_blink_timer) {
+        claw_timer_stop(s_blink_timer);
+        claw_timer_delete(s_blink_timer);
+        s_blink_timer = NULL;
+        gpio_set_level(s_blink.pin, 0);
+    }
+    s_blink.active = 0;
+
+    cJSON_AddStringToObject(result, "status", "ok");
+    cJSON_AddStringToObject(result, "message", "blink stopped");
+    return CLAW_OK;
+}
+
 /* JSON schema strings (static, compile-time) */
 
 static const char schema_gpio_set[] =
@@ -292,8 +441,28 @@ static const char schema_gpio_config[] =
     "\"description\":\"GPIO direction mode\"}},"
     "\"required\":[\"pin\",\"mode\"]}";
 
+static const char schema_gpio_blink[] =
+    "{\"type\":\"object\","
+    "\"properties\":{"
+    "\"pin\":{\"type\":\"integer\","
+    "\"description\":\"GPIO pin number\"},"
+    "\"intervals_ms\":{\"type\":\"array\","
+    "\"items\":{\"type\":\"integer\"},"
+    "\"description\":\"Array of toggle intervals in milliseconds. "
+    "Each entry is the delay before the next toggle. "
+    "Example: [1000,1000,2000,3000,5000] for fibonacci-like "
+    "blink pattern. Max 16 entries, min 50ms each.\"},"
+    "\"repeat\":{\"type\":\"boolean\","
+    "\"description\":\"Repeat the pattern (default true)\"}},"
+    "\"required\":[\"pin\",\"intervals_ms\"]}";
+
+static const char schema_gpio_blink_stop[] =
+    "{\"type\":\"object\",\"properties\":{}}";
+
 void claw_tools_register_gpio(void)
 {
+    memset(&s_blink, 0, sizeof(s_blink));
+
     claw_tool_register("gpio_set",
         "Set a GPIO pin output level (HIGH=1 or LOW=0). "
         "Automatically configures the pin as output.",
@@ -306,6 +475,18 @@ void claw_tools_register_gpio(void)
     claw_tool_register("gpio_config",
         "Configure a GPIO pin direction mode (input, output, or input_output).",
         schema_gpio_config, tool_gpio_config);
+
+    claw_tool_register("gpio_blink",
+        "Start a GPIO blink pattern. Runs locally with hardware "
+        "timers — no AI API calls needed. The pin toggles at each "
+        "interval. Use this for LED patterns, Fibonacci blink, "
+        "SOS morse code, heartbeat effects, etc. "
+        "Call gpio_blink_stop to stop.",
+        schema_gpio_blink, tool_gpio_blink);
+
+    claw_tool_register("gpio_blink_stop",
+        "Stop any active GPIO blink pattern.",
+        schema_gpio_blink_stop, tool_gpio_blink_stop);
 }
 
 #else /* non-ESP-IDF */
