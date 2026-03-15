@@ -13,6 +13,7 @@
 
 #ifdef CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
 #include "driver/usb_serial_jtag.h"
+#include "esp_vfs_usb_serial_jtag.h"
 #else
 #include "driver/uart.h"
 #endif
@@ -23,9 +24,11 @@ void claw_console_init(void)
 {
     usb_serial_jtag_driver_config_t cfg =
         USB_SERIAL_JTAG_DRIVER_CONFIG_DEFAULT();
-    cfg.rx_buffer_size = 256;
-    cfg.tx_buffer_size = 256;
+    cfg.rx_buffer_size = 1024;
+    cfg.tx_buffer_size = 1024;
     usb_serial_jtag_driver_install(&cfg);
+    /* Switch VFS to use the installed driver (not polling) */
+    esp_vfs_usb_serial_jtag_use_driver();
 }
 
 int claw_console_read(void *buf, uint32_t len, uint32_t timeout_ms)
