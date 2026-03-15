@@ -14,6 +14,9 @@
 #define CLAW_TOOL_MAX       24
 #define CLAW_TOOL_NAME_MAX  32
 
+/* Tool flags */
+#define CLAW_TOOL_LOCAL_ONLY  (1 << 0)  /* never delegate via swarm RPC */
+
 /*
  * Tool execute function.
  * @param params  Input parameters (cJSON object, may be NULL)
@@ -27,6 +30,8 @@ typedef struct {
     const char *description;
     const char *input_schema_json;  /* JSON string of input_schema */
     claw_tool_fn execute;
+    uint8_t required_caps;          /* SWARM_CAP_* bitmap for remote exec */
+    uint8_t flags;                  /* CLAW_TOOL_* flags */
 } claw_tool_t;
 
 /**
@@ -36,10 +41,13 @@ int claw_tools_init(void);
 
 /**
  * Register a tool. Returns CLAW_OK or CLAW_ERROR if full.
+ * @param caps   Required SWARM_CAP_* bitmap for remote execution
+ * @param flags  CLAW_TOOL_* flags (e.g. CLAW_TOOL_LOCAL_ONLY)
  */
 int claw_tool_register(const char *name, const char *description,
                        const char *input_schema_json,
-                       claw_tool_fn execute);
+                       claw_tool_fn execute,
+                       uint8_t caps, uint8_t flags);
 
 /**
  * Get number of registered tools.

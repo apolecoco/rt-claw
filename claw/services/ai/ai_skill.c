@@ -372,12 +372,14 @@ void claw_tools_register_skill(void)
     claw_tool_register("create_skill",
         "Create a reusable prompt skill that persists across "
         "reboots. The skill can be invoked later via /skill <name>.",
-        schema_create_skill, tool_create_skill);
+        schema_create_skill, tool_create_skill,
+        0, CLAW_TOOL_LOCAL_ONLY);
 
     claw_tool_register("delete_skill",
         "Delete a user-created skill. Built-in skills cannot "
         "be deleted.",
-        schema_delete_skill, tool_delete_skill);
+        schema_delete_skill, tool_delete_skill,
+        0, CLAW_TOOL_LOCAL_ONLY);
 }
 
 #else /* non-ESP-IDF */

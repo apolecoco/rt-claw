@@ -6,6 +6,7 @@
  */
 
 #include "claw/tools/claw_tools.h"
+#include "claw/services/swarm/swarm.h"
 #include "claw_config.h"
 
 #include <string.h>
@@ -14,8 +15,9 @@
 
 #define TAG "tool_net"
 
-/* Truncate response body to fit LLM context window */
-#define NET_RESP_MAX    16384
+/* Truncate response body — 4KB is sufficient for embedded use;
+ * ai_engine truncates tool results to 1500B anyway. */
+#define NET_RESP_MAX    4096
 #define NET_TIMEOUT_SEC 30
 
 #ifdef CLAW_PLATFORM_ESP_IDF
@@ -420,18 +422,19 @@ void claw_tools_register_net(void)
 #ifdef CLAW_PLATFORM_ESP_IDF
     static const char desc[] =
         "Make an HTTP or HTTPS request (GET or POST). Returns status code "
-        "and response body. IMPORTANT: responses larger than 16KB are "
+        "and response body. IMPORTANT: responses larger than 4KB are "
         "truncated (truncated=true in result). Prefer compact formats "
         "(e.g. wttr.in?format=3) over verbose JSON APIs to avoid "
         "truncation. Both HTTP and HTTPS URLs are supported.";
 #else
     static const char desc[] =
         "Make an HTTP request (GET or POST). Returns status code and "
-        "response body. IMPORTANT: responses larger than 16KB are "
+        "response body. IMPORTANT: responses larger than 4KB are "
         "truncated (truncated=true in result). Prefer compact formats "
         "to avoid truncation. Only plain HTTP is supported (no HTTPS).";
 #endif
 
     claw_tool_register("http_request", desc,
-                       schema_http_request, tool_http_request);
+                       schema_http_request, tool_http_request,
+                       SWARM_CAP_INTERNET, 0);
 }

@@ -142,7 +142,8 @@ void claw_tools_register_my_tool(void)
         "my_tool",
         "Brief description for LLM",
         "{\"type\":\"object\",\"properties\":{\"param1\":{\"type\":\"string\"}},\"required\":[\"param1\"]}",
-        execute_my_tool
+        execute_my_tool,
+        0, 0
     );
 }
 ```

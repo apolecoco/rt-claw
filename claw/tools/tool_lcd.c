@@ -7,6 +7,7 @@
  */
 
 #include "claw/tools/claw_tools.h"
+#include "claw/services/swarm/swarm.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -573,24 +574,29 @@ void claw_tools_register_lcd(void)
 
     claw_tool_register("lcd_fill",
         "Fill the entire LCD screen (320x240) with a solid color.",
-        schema_lcd_fill, tool_lcd_fill);
+        schema_lcd_fill, tool_lcd_fill,
+        SWARM_CAP_LCD, 0);
 
     claw_tool_register("lcd_text",
         "Draw ASCII text on the LCD at position (x,y). "
         "Size 1=8px, 2=16px, 3=24px. Screen is 320x240 pixels.",
-        schema_lcd_text, tool_lcd_text);
+        schema_lcd_text, tool_lcd_text,
+        SWARM_CAP_LCD, 0);
 
     claw_tool_register("lcd_rect",
         "Draw a rectangle on the LCD. Set filled=true for solid fill.",
-        schema_lcd_rect, tool_lcd_rect);
+        schema_lcd_rect, tool_lcd_rect,
+        SWARM_CAP_LCD, 0);
 
     claw_tool_register("lcd_line",
         "Draw a line on the LCD from (x1,y1) to (x2,y2).",
-        schema_lcd_line, tool_lcd_line);
+        schema_lcd_line, tool_lcd_line,
+        SWARM_CAP_LCD, 0);
 
     claw_tool_register("lcd_circle",
         "Draw a circle on the LCD at center (x,y) with given radius.",
-        schema_lcd_circle, tool_lcd_circle);
+        schema_lcd_circle, tool_lcd_circle,
+        SWARM_CAP_LCD, 0);
 }
 
 /* -------------------- Status bar API -------------------- */

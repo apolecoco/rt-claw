@@ -6,6 +6,7 @@
  */
 
 #include "claw/tools/claw_tools.h"
+#include "claw/services/swarm/swarm.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -466,15 +467,18 @@ void claw_tools_register_gpio(void)
     claw_tool_register("gpio_set",
         "Set a GPIO pin output level (HIGH=1 or LOW=0). "
         "Automatically configures the pin as output.",
-        schema_gpio_set, tool_gpio_set);
+        schema_gpio_set, tool_gpio_set,
+        SWARM_CAP_GPIO, 0);
 
     claw_tool_register("gpio_get",
         "Read the current level of a GPIO pin. Returns 0 (LOW) or 1 (HIGH).",
-        schema_gpio_get, tool_gpio_get);
+        schema_gpio_get, tool_gpio_get,
+        SWARM_CAP_GPIO, 0);
 
     claw_tool_register("gpio_config",
         "Configure a GPIO pin direction mode (input, output, or input_output).",
-        schema_gpio_config, tool_gpio_config);
+        schema_gpio_config, tool_gpio_config,
+        SWARM_CAP_GPIO, 0);
 
     claw_tool_register("gpio_blink",
         "Start a GPIO blink pattern. Runs locally with hardware "
@@ -482,11 +486,13 @@ void claw_tools_register_gpio(void)
         "interval. Use this for LED patterns, Fibonacci blink, "
         "SOS morse code, heartbeat effects, etc. "
         "Call gpio_blink_stop to stop.",
-        schema_gpio_blink, tool_gpio_blink);
+        schema_gpio_blink, tool_gpio_blink,
+        SWARM_CAP_GPIO, 0);
 
     claw_tool_register("gpio_blink_stop",
         "Stop any active GPIO blink pattern.",
-        schema_gpio_blink_stop, tool_gpio_blink_stop);
+        schema_gpio_blink_stop, tool_gpio_blink_stop,
+        SWARM_CAP_GPIO, 0);
 }
 
 #else /* non-ESP-IDF */

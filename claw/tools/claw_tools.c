@@ -9,6 +9,7 @@
 #include "claw/services/ai/ai_skill.h"
 #endif
 #ifdef CONFIG_RTCLAW_AUDIO_ENABLE
+#include "claw/services/swarm/swarm.h"
 #include "drivers/audio/espressif/es8311_audio.h"
 #endif
 
@@ -177,7 +178,8 @@ static void claw_tools_register_audio(void)
 {
     claw_tool_register("audio_beep",
         "Play a single tone. Use for custom frequencies.",
-        schema_beep, tool_audio_beep);
+        schema_beep, tool_audio_beep,
+        SWARM_CAP_SPEAKER, 0);
 
     claw_tool_register("audio_play_sound",
         "Play a preset sound effect. Available sounds: "
@@ -185,17 +187,20 @@ static void claw_tools_register_audio(void)
         "notify (new message), alert (urgent warning), "
         "startup (boot jingle), click (button feedback). "
         "Use this for common feedback instead of audio_beep.",
-        schema_play_sound, tool_audio_play_sound);
+        schema_play_sound, tool_audio_play_sound,
+        SWARM_CAP_SPEAKER, 0);
 
     claw_tool_register("audio_volume",
         "Set the speaker volume (0-100).",
-        schema_volume, tool_audio_volume);
+        schema_volume, tool_audio_volume,
+        SWARM_CAP_SPEAKER, 0);
 }
 #endif /* CONFIG_RTCLAW_AUDIO_ENABLE */
 
 int claw_tool_register(const char *name, const char *description,
                        const char *input_schema_json,
-                       claw_tool_fn execute)
+                       claw_tool_fn execute,
+                       uint8_t caps, uint8_t flags)
 {
     if (s_tool_count >= CLAW_TOOL_MAX) {
         CLAW_LOGE(TAG, "tool registry full");
@@ -211,6 +216,8 @@ int claw_tool_register(const char *name, const char *description,
     t->description = description;
     t->input_schema_json = input_schema_json;
     t->execute = execute;
+    t->required_caps = caps;
+    t->flags = flags;
     s_tool_count++;
 
     CLAW_LOGD(TAG, "registered: %s", name);

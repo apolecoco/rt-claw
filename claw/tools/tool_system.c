@@ -104,15 +104,18 @@ static void register_memory_tools(void)
         "Save a fact to long-term memory (persists across reboots). "
         "Use when the user asks you to remember something: their "
         "name, preferences, important facts, nicknames, etc.",
-        schema_save_memory, tool_save_memory);
+        schema_save_memory, tool_save_memory,
+        0, CLAW_TOOL_LOCAL_ONLY);
 
     claw_tool_register("delete_memory",
         "Delete a fact from long-term memory by key.",
-        schema_delete_memory, tool_delete_memory);
+        schema_delete_memory, tool_delete_memory,
+        0, CLAW_TOOL_LOCAL_ONLY);
 
     claw_tool_register("list_memories",
         "List all facts stored in long-term memory.",
-        se, tool_list_memories);
+        se, tool_list_memories,
+        0, CLAW_TOOL_LOCAL_ONLY);
 }
 
 #ifdef CLAW_PLATFORM_ESP_IDF
@@ -224,24 +227,28 @@ void claw_tools_register_system(void)
     claw_tool_register("system_info",
         "Get system information: chip model, firmware version, "
         "core count, revision, and uptime in seconds.",
-        schema_empty, tool_system_info);
+        schema_empty, tool_system_info,
+        0, CLAW_TOOL_LOCAL_ONLY);
 
     claw_tool_register("memory_info",
         "Get heap memory status: total, free, minimum-ever-free bytes, "
         "and usage percentage.",
-        schema_empty, tool_memory_info);
+        schema_empty, tool_memory_info,
+        0, CLAW_TOOL_LOCAL_ONLY);
 
     claw_tool_register("clear_history",
         "Clear the conversation history to free memory. "
         "Use when memory is low or the conversation is too long.",
-        schema_empty, tool_clear_history);
+        schema_empty, tool_clear_history,
+        0, CLAW_TOOL_LOCAL_ONLY);
 
     register_memory_tools();
 
     claw_tool_register("system_restart",
         "Restart the system. Use with caution — "
         "this will reboot the device after a 2-second delay.",
-        schema_empty, tool_system_restart);
+        schema_empty, tool_system_restart,
+        0, CLAW_TOOL_LOCAL_ONLY);
 }
 
 #elif defined(CLAW_PLATFORM_RTTHREAD)
@@ -305,16 +312,19 @@ void claw_tools_register_system(void)
 {
     claw_tool_register("system_info",
         "Get system information: platform, RTOS version, and uptime.",
-        schema_empty, tool_system_info);
+        schema_empty, tool_system_info,
+        0, CLAW_TOOL_LOCAL_ONLY);
 
     claw_tool_register("memory_info",
         "Get heap memory status: total, free, max-ever-used bytes, "
         "and usage percentage.",
-        schema_empty, tool_memory_info);
+        schema_empty, tool_memory_info,
+        0, CLAW_TOOL_LOCAL_ONLY);
 
     claw_tool_register("clear_history",
         "Clear the conversation history to free memory.",
-        schema_empty, tool_clear_history);
+        schema_empty, tool_clear_history,
+        0, CLAW_TOOL_LOCAL_ONLY);
 
     register_memory_tools();
 }
