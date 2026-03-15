@@ -1,171 +1,174 @@
-# rt-claw 架构设计
+# 架构
 
 [English](../en/architecture.md) | **中文**
 
 ## 概述
 
-rt-claw 将 OpenClaw 个人助手概念引入嵌入式 RTOS 设备。
-每个 rt-claw 节点是一个轻量、具备实时能力的单元，可独立运行，
-也可加入蜂群节点网络进行分布式智能协作。
+rt-claw 是一个受 OpenClaw 启发的 AI 助手，面向嵌入式 RTOS 平台。
+它通过操作系统抽象层（OSAL）实现多 RTOS 可移植性——相同的核心代码无需
+修改即可运行在 FreeRTOS（ESP-IDF）和 RT-Thread 上。
 
-通过 OSAL（操作系统抽象层）支持多 RTOS——相同的核心代码
-在 FreeRTOS（ESP-IDF）和 RT-Thread 上运行，无需任何修改。
+所有核心逻辑位于 `claw/` 目录。Meson 交叉编译将其生成 `librtclaw.a`
+和 `libosal.a`，各平台的原生构建系统（CMake 或 SCons）将它们链接到最终
+固件二进制文件中。
 
-## OSAL — 操作系统抽象层
-
-关键架构决策：所有 rt-claw 核心代码仅依赖 `osal/claw_os.h`。
+## 层次图
 
 ```
-claw/*.c  --->  #include "osal/claw_os.h"  (编译时接口)
++----------------------------------------------------------------------+
+|  Application                                                         |
+|  gateway | swarm | net | ai_engine | tools | shell | sched | feishu  |
+|  heartbeat                                                           |
++----------------------------------------------------------------------+
+|  OSAL                                                                |
+|  claw_os.h  |  claw_net.h                                           |
++----------------------------------------------------------------------+
+|  RTOS                                                                |
+|  FreeRTOS (ESP-IDF)              |  RT-Thread                        |
++----------------------------------------------------------------------+
+|  Hardware                                                            |
+|  ESP32-C3/S3 (WiFi/BLE/OLED/Audio)  |  vexpress-a9 (Ethernet/UART)  |
++----------------------------------------------------------------------+
+```
+
+## OSAL（操作系统抽象层）
+
+接口头文件：`include/osal/claw_os.h`
+
+已抽象的基本原语：线程、互斥锁、信号量、消息队列、定时器、
+内存管理（malloc/free）、日志（CLAW_LOGI/LOGW/LOGE/LOGD）、时钟节拍/时间。
+
+实现：
+
+- `osal/freertos/claw_os_freertos.c` -- 在 ESP-IDF 平台上链接
+- `osal/rtthread/claw_os_rtthread.c` -- 在 RT-Thread 平台上链接
+
+网络抽象：`include/osal/claw_net.h` -- HTTP POST 接口。
+
+设计理念：链接时绑定，零开销，核心代码中不使用函数指针，
+`claw/` 源文件中不使用条件编译（`#ifdef`）。
+
+```
+claw/*.c  --->  #include "osal/claw_os.h"
                         |
           +-------------+-------------+
           |                           |
   claw_os_freertos.c          claw_os_rtthread.c
-  (ESP-IDF 平台链接)          (RT-Thread 平台链接)
+  (linked on ESP-IDF)         (linked on RT-Thread)
 ```
-
-抽象的原语：
-- 线程、互斥锁、信号量、消息队列、定时器
-- 内存分配（malloc/free）
-- 日志（CLAW_LOGI/LOGW/LOGE/LOGD）
-- Tick / 时间
-
-设计：接口头文件 + 每个 RTOS 一个实现文件（链接时绑定）。
-零运行时开销。无函数指针。核心代码中无条件编译。
 
 ## 核心服务
 
-### 网关（claw/core/gateway）
+### 网关（`claw/core/gateway.c`）
 
-面向蜂群通信的节点间消息路由骨架。
+线程安全的消息路由中心。所有服务间通信通过网关消息队列传递。
+消息类型：DATA、CMD、EVENT、SWARM。
+队列容量：16 条消息 x 256 字节。专用线程优先级为 15。
 
-- 线程安全的消息队列（通过 `claw_mq_*`）
-- 消息类型：DATA、CMD、EVENT、SWARM
-- 路由逻辑尚未实现——当前仅记录日志
+### 调度器（`claw/core/scheduler.c`）
 
-### 蜂群服务（claw/services/swarm）
+定时器驱动的任务执行框架，时钟分辨率为 1 秒。支持最多 8 个并发任务
+（一次性和重复性任务）。AI 可通过工具调用创建、列出和删除任务。
+通过 NVS 存储实现跨重启持久化。
 
-节点发现与协调，用于构建 rt-claw 设备网格。
+### 心跳（`claw/core/heartbeat.c`）
 
-- 局域网 UDP 广播发现
-- ESP-NOW 超低延迟点对点通信（ESP32 平台）
-- 基于心跳的存活检测
-- 能力广播
-- 跨蜂群任务分发
+可选的周期性 AI 签到功能，每 5 分钟执行一次。向 AI 引擎发送心跳提示，
+使助手能够执行后台监控。依赖调度器服务进行计时。
 
-### 网络服务（claw/services/net）
+### AI 引擎（`claw/services/ai/`）
 
-平台感知的网络支持：
+Claude API HTTP 客户端，支持 Tool Use。24 个内置工具，涵盖 GPIO、
+系统信息、LCD、音频、调度器、HTTP 请求和长期记忆。对话记忆：
+RAM 环形缓冲区（短期）+ NVS 存储（长期）。技能系统支持可复用的提示模板。
 
-- ESP32-C3：WiFi（802.11 b/g/n）+ MQTT + mbedTLS
-- QEMU-A9：以太网（smc911x）+ lwIP + MQTT
-- 通用：基于 MQTT topic 的通道系统（映射到 OpenClaw 的多通道架构）
+### 集群（`claw/services/swarm/`）
 
-### AI 引擎（claw/services/ai）
+分布式节点协调。基于 UDP 广播的节点发现，端口 5300。
+基于心跳的存活检测。能力位图广播。
+支持局域网内跨节点远程工具调用。
 
-LLM API 客户端，支持 Tool Use：
+### 网络（`claw/services/net/`）
 
-- Claude API 对话与函数调用（Tool Use）；30+ 内置工具覆盖 GPIO、系统信息、LCD、音频、调度器、HTTP 请求、长期记忆
-- 对话记忆（短期 RAM 环形缓冲 + 长期 NVS 存储）
-- 技能系统：预定义和 AI 创建的可复用 Prompt 模板
-- HTTP/HTTPS 传输（ESP-IDF 使用 esp_http_client + TLS；RT-Thread 使用 BSD socket + 代理）
+平台感知的 HTTP 客户端。ESP-IDF：使用 `esp_http_client` 配合 mbedTLS
+实现 HTTPS。RT-Thread：BSD 套接字通过 `scripts/api-proxy.py`
+（HTTP 转 HTTPS 代理，用于无原生 TLS 的环境）路由。
 
-### 调度器（claw/core/scheduler）
+### 飞书 IM（`claw/services/im/`）
 
-定时任务执行：
+通过 WebSocket 长连接接入飞书/Lark 消息平台。无需公网 IP 或 Webhook
+端点。事件订阅：`im.message.receive_v1`。在飞书用户与 AI 引擎之间
+进行双向消息转发。
 
-- 最多 8 个并发定时任务，1 秒 tick 精度
-- AI 可通过工具调用创建、查看、删除任务
-- 支持一次性和重复任务
+### Shell（`claw/shell/`）
 
-### IM 服务（claw/services/im）
+基于 UART 的 REPL，采用聊天优先设计。直接文本输入发送到 AI 引擎。
+`/commands` 触发系统操作。支持插入模式行编辑和 Tab 补全。支持 UTF-8。
 
-即时通讯集成：
+## 驱动架构
 
-- 飞书（Lark）：WebSocket 长连接，无需公网 IP
-- 事件订阅：`im.message.receive_v1`
-- 计划中：钉钉、QQ、Telegram
+采用 Linux 内核风格的组织方式：
 
-### Shell（claw/shell）
+```
+drivers/<subsystem>/<vendor>/<driver>.c      -- implementation
+include/drivers/<subsystem>/<vendor>/<hdr>.h -- public header
+```
 
-UART 交互终端，对话优先设计：
-
-- 直接文本输入发送给 AI 引擎
-- `/命令` 执行系统操作（14 个内置命令）
-- 插入模式编辑 + Tab 补全
-- UTF-8 支持
-
-## 驱动层
-
-Linux 内核风格硬件驱动：`drivers/<subsystem>/<vendor>/`。
-公共头文件镜像位于 `include/drivers/`。
-
-| 驱动 | 路径 | 说明 |
+| 驱动 | 路径 | 描述 |
 |------|------|------|
 | WiFi 管理器 | `drivers/net/espressif/` | ESP32 WiFi STA 管理（C3/S3 共享） |
-| ES8311 音频 | `drivers/audio/espressif/` | I2C 音频编解码器，预设音效 |
-| SSD1306 OLED | `drivers/display/espressif/` | I2C OLED 显示（128x64） |
-| 串行控制台 | `drivers/serial/espressif/` | 串行控制台驱动 |
+| ES8311 音频 | `drivers/audio/espressif/` | I2C 音频编解码器，带预设音效 |
+| SSD1306 OLED | `drivers/display/espressif/` | I2C OLED 显示屏（128x64） |
+| 串口控制台 | `drivers/serial/espressif/` | 串口控制台驱动 |
 
 ## 平台
 
-### ESP32-C3（platform/esp32c3/）
+| 平台 | CPU | RTOS | 构建系统 | 网络 | 开发板 |
+|------|-----|------|----------|------|--------|
+| ESP32-C3 | RISC-V 160MHz | FreeRTOS (ESP-IDF) | Meson + CMake | WiFi / Ethernet (QEMU) | qemu, devkit, xiaozhi-xmini |
+| ESP32-S3 | Xtensa LX7 240MHz 双核 | FreeRTOS (ESP-IDF) | Meson + CMake | WiFi + PSRAM / Ethernet (QEMU) | qemu, default |
+| vexpress-a9 | ARM Cortex-A9 | RT-Thread | Meson + SCons | Ethernet | qemu |
 
-- CPU：RISC-V 32 位（rv32imc），160MHz
-- RAM：400KB SRAM（约 240KB 可用于应用）
-- WiFi：802.11 b/g/n
-- BLE：Bluetooth 5.0 LE
-- RTOS：ESP-IDF + FreeRTOS
-- 构建：Meson（交叉编译）+ CMake/idf.py（链接 + 烧录）
-- QEMU：Espressif 分支（qemu-riscv32），仅 UART（无 WiFi 仿真）
+ESP32 平台的开发板选择由 `RTCLAW_BOARD` 驱动。
+开发板特定配置位于 `platform/<chip>/boards/<board>/` 目录下。
 
-### ESP32-S3（platform/esp32s3/）
-
-- CPU：Xtensa LX7（双核），240MHz
-- RAM：512KB SRAM + 8MB PSRAM（真实硬件）
-- WiFi：802.11 b/g/n
-- BLE：Bluetooth 5.0 LE
-- RTOS：ESP-IDF + FreeRTOS
-- 构建：Meson（交叉编译）+ CMake/idf.py（链接 + 烧录）
-- QEMU：Espressif 分支（qemu-system-xtensa），OpenCores 以太网（无 WiFi 仿真）
-- 板卡：qemu（4MB）、default（16MB + 8MB PSRAM 真实硬件）
-
-### vexpress-a9 QEMU（platform/vexpress-a9/）
-
-- CPU：ARM Cortex-A9（双核）
-- RTOS：RT-Thread
-- 构建：Meson（交叉编译）+ SCons（链接）
-- 外设：UART、以太网、LCD、SD 卡
-
-## 通信流程
+## 构建流程
 
 ```
-外部（MQTT/HTTP）
-       |
-       v
-  +---------+
-  | net_svc |
-  +----+----+
-       |
-       v
-  +---------+     +---------+
-  | gateway |---->| swarm   |---- 其他 rt-claw 节点
-  +----+----+     +---------+
-       |
-       v
-  +---------+
-  |ai_engine|
-  +---------+
+Makefile (entry point)
+    |
+    +---> scripts/gen-esp32{c3,s3}-cross.py   (generate Meson cross-file)
+    |
+    +---> meson setup + meson compile
+    |         |
+    |         +---> claw/      --> librtclaw.a
+    |         +---> osal/      --> libosal.a
+    |
+    +---> platform native build
+              |
+              +---> esp32c3/esp32s3: idf.py build (CMakeLists.txt links .a)
+              +---> vexpress-a9:     scons (SConstruct links .a)
+              |
+              +---> Final firmware binary in build/<platform>/
 ```
 
-## ESP32-C3 资源预算
+## 事件优先级模型
 
-| 模块 | SRAM | 说明 |
+| 优先级 | 类别 | 延迟 | 示例 |
+|--------|------|------|------|
+| P0 | 反射 | 1-10 ms | ISR 处理、硬件中断 |
+| P1 | 控制 | 10-50 ms | 电机控制、传感器轮询 |
+| P2 | 交互 | 50-150 ms | 网关路由（线程优先级 15）、Shell I/O |
+| P3 | AI | 尽力而为 | AI 引擎（线程优先级 5-10）、集群同步 |
+
+## 资源预算（ESP32-C3）
+
+| 模块 | SRAM | 备注 |
 |------|------|------|
-| ESP-IDF + WiFi + TLS | ~160KB | 系统开销 |
-| Gateway | ~8KB | MQ 16x256B + 线程 |
-| Swarm | ~12KB | 32 节点 + ESP-NOW |
-| Net（MQTT） | ~25KB | 客户端 + 缓冲区 |
-| AI Engine | ~15KB | LLM API 客户端 + Tool Use |
-| App + CLI | ~10KB | 主程序 + shell |
-| **合计** | **~230KB** | 约 170KB 剩余空间 |
+| ESP-IDF + WiFi + TLS | ~160 KB | 系统开销 |
+| 网关 + 调度器 | ~12 KB | 消息队列 16x256B + 线程 + 定时器 |
+| AI 引擎 + 记忆 | ~15 KB | HTTP 客户端 + 对话环形缓冲区 |
+| 工具 | ~4 KB | 24 个工具描述符 + 处理函数 |
+| 集群 + 心跳 | ~14 KB | UDP 套接字 + 节点表 + 定时器 |
+| Shell + 应用 | ~10 KB | 行缓冲区 + 命令表 |
+| **总计** | **~215 KB** | 可用 240 KB 中约剩余 ~25 KB |

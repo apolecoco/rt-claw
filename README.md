@@ -26,7 +26,7 @@ ESP32-S3 WiFi support adapted from [MimiClaw](https://github.com/memovai/mimicla
   <img src="images/demo.png" alt="RT-Claw Demo — AI drawing on LCD via Tool Use" width="700">
 </p>
 
-[Architecture](docs/en/architecture.md) · [ESP32-C3 QEMU Guide](docs/en/esp32c3-qemu.md) · [Contributing](docs/en/contributing.md) · [Coding Style](docs/en/coding-style.md)
+[Getting Started](docs/en/getting-started.md) · [Usage](docs/en/usage.md) · [Architecture](docs/en/architecture.md) · [Porting](docs/en/porting.md) · [Tuning](docs/en/tuning.md) · [Contributing](docs/en/contributing.md)
 
 ## Core Idea
 
@@ -45,6 +45,7 @@ scenario without writing, compiling, or flashing embedded code again.
 |---------|-------------|--------|
 | LLM Chat Engine | Interactive conversation with Claude API over HTTP | Done |
 | Tool Use | LLM-driven hardware control (GPIO, system info, LCD, audio, scheduler, HTTP) via function calling; 30+ built-in tools | Done |
+| Skills | Composable multi-tool workflows; AI can create, persist (NVS), and execute skills that orchestrate multiple tools | Done |
 | LCD Graphics | 320x240 RGB565 framebuffer with text, shapes, and drawing primitives; AI agent can draw on screen via tool calls | Done |
 | OLED Display | SSD1306 I2C OLED driver for xiaozhi-xmini board | Done |
 | Audio | ES8311 codec driver with preset sound effects (success, error, notify, alert); AI-controllable volume and beep | Done |
@@ -52,13 +53,13 @@ scenario without writing, compiling, or flashing embedded code again.
 | OSAL | Write once, run on FreeRTOS and RT-Thread with zero code changes | Done |
 | Gateway | Thread-safe message routing between services | Done |
 | Networking | Ethernet + HTTP client on ESP32-C3 QEMU; WiFi on real hardware | Done |
-| Multi-Model API | Support mainstream LLM APIs: Claude, GPT, Gemini, DeepSeek, GLM, MiniMax, Grok, Moonshot, Baichuan, Qwen, Doubao, Llama (Ollama) | Planned |
-| Web Config Portal | Lightweight built-in web page for configuring API keys, selecting models, and tuning parameters at runtime | Planned |
-| Swarm Intelligence | Node discovery, heartbeat, capability bitmap, remote tool invocation across nodes | In Progress |
+| Swarm Intelligence | Node discovery, heartbeat, capability bitmap, remote tool invocation across nodes | Done |
 | Conversation Memory | Short-term RAM ring buffer + long-term NVS Flash persistent storage; AI can save/delete/list memories | Done |
-| Skill Memory | Nodes learn and recall frequently used operation patterns | In Progress |
 | Scheduled Tasks | Timer-driven task execution and periodic automation; AI can create/list/remove tasks | Done |
 | IM Integrations | Feishu (Lark) via WebSocket long connection; planned: DingTalk, QQ, Telegram | In Progress |
+| Web Flash & Serial | Browser-based firmware flash (esptool-js) and serial terminal with ANSI color rendering | Done |
+| Multi-Model API | Support mainstream LLM APIs: Claude, GPT, Gemini, DeepSeek, GLM, MiniMax, Grok, Moonshot, Baichuan, Qwen, Doubao, Llama (Ollama) | Planned |
+| Web Config Portal | Lightweight built-in web page for configuring API keys, selecting models, and tuning parameters at runtime | Planned |
 | Claw Skill Provider | Serve as a skill for other Claws, giving them the ability to sense and control the physical world | Planned |
 
 ## Architecture
@@ -66,16 +67,22 @@ scenario without writing, compiling, or flashing embedded code again.
 ```
 +--------------------------------------------------------------+
 |                     rt-claw Application                      |
-| gateway | swarm | net | ai_engine | tools | shell | sched   |
-| feishu  | heartbeat | lcd | audio | memory | skill          |
+| gateway | net | swarm | ai_engine | shell | sched | feishu   |
 +--------------------------------------------------------------+
-|               osal/claw_os.h  (OSAL API)                    |
+|                      skills (AI Skills)                      |
+|            (one skill composes multiple tools)               |
++--------------------------------------------------------------+
+|                     tools (Tool Use)                         |
+| gpio | system | lcd | audio | http | scheduler | memory      |
++--------------------------------------------------------------+
+|                   drivers (Hardware BSP)                     |
+| WiFi | ES8311 | SSD1306 | serial | LCD framebuffer           |
++--------------------------------------------------------------+
+|               osal/claw_os.h  (OSAL API)                     |
 +-------------------+------------------------------------------+
 | FreeRTOS (IDF)    |             RT-Thread                    |
 +-------------------+------------------------------------------+
 | ESP32-C3 / S3     |  QEMU vexpress-a9                        |
-| WiFi / BLE / OLED |  Ethernet / UART                         |
-| Audio (ES8311)    |                                          |
 +-------------------+------------------------------------------+
 ```
 
@@ -85,7 +92,7 @@ scenario without writing, compiling, or flashing embedded code again.
 |----------|--------|------|-------|--------|
 | ESP32-C3 | QEMU (Espressif fork) | ESP-IDF + FreeRTOS | Meson + CMake | AI + Ethernet verified |
 | ESP32-S3 | QEMU (Espressif fork) | ESP-IDF + FreeRTOS | Meson + CMake | AI + Ethernet verified |
-| ESP32-C3 | Real hardware | ESP-IDF + FreeRTOS | Meson + CMake | Untested |
+| ESP32-C3 | Real hardware (xiaozhi-xmini) | ESP-IDF + FreeRTOS | Meson + CMake | Verified |
 | ESP32-S3 | Real hardware | ESP-IDF + FreeRTOS | Meson + CMake | Untested |
 | QEMU vexpress-a9 | QEMU | RT-Thread | Meson + SCons | Boot + Ethernet verified |
 
@@ -376,10 +383,13 @@ Join the GTOC (Gevico Open-Source Community) channels:
 
 ## Documentation
 
+- [Getting Started](docs/en/getting-started.md) — Build, flash, and run on all platforms
+- [Usage Guide](docs/en/usage.md) — Shell commands, Tool Use, skills, memory
+- [Architecture](docs/en/architecture.md) — OSAL, services, drivers, build flow
+- [Porting & Extension](docs/en/porting.md) — New platforms, tools, skills, drivers
+- [Tuning & Optimization](docs/en/tuning.md) — Module trimming, memory, configuration
 - [Coding Style](docs/en/coding-style.md)
 - [Contributing](docs/en/contributing.md)
-- [Architecture](docs/en/architecture.md)
-- [ESP32-C3 QEMU Guide](docs/en/esp32c3-qemu.md)
 
 ## License
 

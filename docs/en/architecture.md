@@ -1,22 +1,55 @@
-# rt-claw Architecture
+# Architecture
 
 **English** | [中文](../zh/architecture.md)
 
 ## Overview
 
-rt-claw brings the OpenClaw personal assistant concept to embedded RTOS devices.
-Each rt-claw node is a lightweight, real-time capable unit that can operate
-standalone or join a swarm of nodes for distributed intelligence.
+rt-claw is an OpenClaw-inspired AI assistant targeting embedded RTOS platforms.
+It achieves multi-RTOS portability through an OS Abstraction Layer (OSAL) --
+the same core code runs on FreeRTOS (ESP-IDF) and RT-Thread unmodified.
 
-Multi-RTOS support through OSAL (OS Abstraction Layer) — same core code runs
-on FreeRTOS (ESP-IDF) and RT-Thread with zero modification.
+All core logic lives in `claw/`. Meson cross-compiles it into `librtclaw.a`
+and `libosal.a`, which each platform's native build system (CMake or SCons)
+links into the final firmware binary.
 
-## OSAL — OS Abstraction Layer
-
-The key architectural decision: all rt-claw core code depends only on `osal/claw_os.h`.
+## Layer Diagram
 
 ```
-claw/*.c  --->  #include "osal/claw_os.h"  (compile-time interface)
++----------------------------------------------------------------------+
+|  Application                                                         |
+|  gateway | swarm | net | ai_engine | tools | shell | sched | feishu  |
+|  heartbeat                                                           |
++----------------------------------------------------------------------+
+|  OSAL                                                                |
+|  claw_os.h  |  claw_net.h                                           |
++----------------------------------------------------------------------+
+|  RTOS                                                                |
+|  FreeRTOS (ESP-IDF)              |  RT-Thread                        |
++----------------------------------------------------------------------+
+|  Hardware                                                            |
+|  ESP32-C3/S3 (WiFi/BLE/OLED/Audio)  |  vexpress-a9 (Ethernet/UART)  |
++----------------------------------------------------------------------+
+```
+
+## OSAL (OS Abstraction Layer)
+
+Interface header: `include/osal/claw_os.h`
+
+Abstracted primitives: Thread, Mutex, Semaphore, Message Queue, Timer,
+Memory (malloc/free), Logging (CLAW_LOGI/LOGW/LOGE/LOGD), Tick/Time.
+
+Implementations:
+
+- `osal/freertos/claw_os_freertos.c` -- linked on ESP-IDF platforms
+- `osal/rtthread/claw_os_rtthread.c` -- linked on RT-Thread platforms
+
+Network abstraction: `include/osal/claw_net.h` -- HTTP POST interface.
+
+Design: link-time binding. Zero overhead. No function pointers in core code.
+No conditional compilation (`#ifdef`) in `claw/` source files.
+
+```
+claw/*.c  --->  #include "osal/claw_os.h"
                         |
           +-------------+-------------+
           |                           |
@@ -24,82 +57,65 @@ claw/*.c  --->  #include "osal/claw_os.h"  (compile-time interface)
   (linked on ESP-IDF)         (linked on RT-Thread)
 ```
 
-Abstracted primitives:
-- Thread, Mutex, Semaphore, Message Queue, Timer
-- Memory allocation (malloc/free)
-- Logging (CLAW_LOGI/LOGW/LOGE/LOGD)
-- Tick / time
-
-Design: interface header + per-RTOS implementation file (link-time binding).
-Zero runtime overhead. No function pointers. No conditional compilation in core code.
-
 ## Core Services
 
-### Gateway (claw/core/gateway)
+### Gateway (`claw/core/gateway.c`)
 
-Inter-node message routing skeleton for swarm communication.
+Thread-safe message routing hub. All inter-service communication passes
+through the gateway message queue. Message types: DATA, CMD, EVENT, SWARM.
+Queue: 16 messages x 256 bytes. Dedicated thread at priority 15.
 
-- Thread-safe message queue (via `claw_mq_*`)
-- Message types: DATA, CMD, EVENT, SWARM
-- Routing logic not yet implemented — messages are logged only
+### Scheduler (`claw/core/scheduler.c`)
 
-### Swarm Service (claw/services/swarm)
+Timer-driven task execution with 1-second tick resolution. Supports up to
+8 concurrent tasks (one-shot and repeating). AI can create, list, and
+remove tasks via tool calls. Persistent across reboots via NVS storage.
 
-Node discovery and coordination for building a mesh of rt-claw devices.
+### Heartbeat (`claw/core/heartbeat.c`)
 
-- UDP broadcast discovery on local network
-- ESP-NOW for ultra-low-latency P2P (ESP32 platforms)
-- Heartbeat-based liveness detection
-- Capability advertisement
-- Task distribution across the swarm
+Optional periodic AI check-in every 5 minutes. Sends a heartbeat prompt
+to the AI engine so the assistant can perform background monitoring.
+Depends on the scheduler service for timing.
 
-### Network Service (claw/services/net)
+### AI Engine (`claw/services/ai/`)
 
-Platform-aware networking:
+Claude API HTTP client with Tool Use support. 24 built-in tools covering
+GPIO, system info, LCD, audio, scheduler, HTTP requests, and long-term
+memory. Conversation memory: RAM ring buffer (short-term) + NVS storage
+(long-term). Skill system for reusable prompt templates.
 
-- ESP32-C3: WiFi (802.11 b/g/n) + MQTT + mbedTLS
-- QEMU-A9: Ethernet (smc911x) + lwIP + MQTT
-- Common: MQTT topic-based channel system (maps to OpenClaw's multi-channel)
+### Swarm (`claw/services/swarm/`)
 
-### AI Engine (claw/services/ai)
+Distributed node coordination. UDP broadcast discovery on port 5300.
+Heartbeat-based liveness detection. Capability bitmap advertisement.
+Remote tool invocation across nodes in the local network.
 
-LLM API client with Tool Use support:
+### Network (`claw/services/net/`)
 
-- Claude API integration with streaming HTTP requests
-- Tool Use: LLM-driven hardware control via function calling; 30+ built-in tools covering GPIO, system info, LCD, audio, scheduler, HTTP requests, and long-term memory
-- Conversation memory (short-term RAM ring buffer + long-term NVS storage)
-- Skill system: predefined and AI-created reusable prompt templates
-- HTTP/HTTPS transport (ESP-IDF uses esp_http_client with TLS; RT-Thread uses BSD sockets via API proxy)
+Platform-aware HTTP client. ESP-IDF: `esp_http_client` with mbedTLS for
+HTTPS. RT-Thread: BSD sockets routed through `scripts/api-proxy.py`
+(HTTP-to-HTTPS proxy for environments without native TLS).
 
-### Scheduler (claw/core/scheduler)
+### Feishu IM (`claw/services/im/`)
 
-Timer-driven task execution:
+WebSocket long connection to Feishu/Lark messaging platform. No public IP
+or webhook endpoint required. Event subscription: `im.message.receive_v1`.
+Bidirectional message relay between Feishu users and the AI engine.
 
-- Up to 8 concurrent scheduled tasks with 1-second tick resolution
-- AI can create, list, and remove tasks via tool calls
-- Supports one-shot and repeating tasks
+### Shell (`claw/shell/`)
 
-### IM Service (claw/services/im)
+UART REPL with chat-first design. Direct text input goes to the AI engine.
+`/commands` trigger system operations. Insert-mode line editing with tab
+completion. UTF-8 aware.
 
-Instant messaging integrations:
+## Driver Architecture
 
-- Feishu (Lark): WebSocket long connection, no public IP required
-- Event subscription: `im.message.receive_v1`
-- Planned: DingTalk, QQ, Telegram
+Linux-kernel style organization:
 
-### Shell (claw/shell)
-
-UART REPL with chat-first design:
-
-- Direct text input goes to AI engine
-- `/commands` for system operations (14 built-in commands)
-- Insert-mode editing with tab completion
-- UTF-8 support
-
-## Drivers
-
-Linux-kernel style hardware driver layer: `drivers/<subsystem>/<vendor>/`.
-Public headers mirror the structure under `include/drivers/`.
+```
+drivers/<subsystem>/<vendor>/<driver>.c      -- implementation
+include/drivers/<subsystem>/<vendor>/<hdr>.h -- public header
+```
 
 | Driver | Path | Description |
 |--------|------|-------------|
@@ -110,63 +126,52 @@ Public headers mirror the structure under `include/drivers/`.
 
 ## Platforms
 
-### ESP32-C3 (platform/esp32c3/)
+| Platform | CPU | RTOS | Build | Network | Boards |
+|----------|-----|------|-------|---------|--------|
+| ESP32-C3 | RISC-V 160MHz | FreeRTOS (ESP-IDF) | Meson + CMake | WiFi / Ethernet (QEMU) | qemu, devkit, xiaozhi-xmini |
+| ESP32-S3 | Xtensa LX7 240MHz dual-core | FreeRTOS (ESP-IDF) | Meson + CMake | WiFi + PSRAM / Ethernet (QEMU) | qemu, default |
+| vexpress-a9 | ARM Cortex-A9 | RT-Thread | Meson + SCons | Ethernet | qemu |
 
-- CPU: RISC-V 32-bit (rv32imc), 160MHz
-- RAM: 400KB SRAM (~240KB available for app)
-- WiFi: 802.11 b/g/n
-- BLE: Bluetooth 5.0 LE
-- RTOS: ESP-IDF + FreeRTOS
-- Build: Meson (cross-compile) + CMake/idf.py (link + flash)
-- QEMU: Espressif fork (qemu-riscv32), UART only (no WiFi sim)
+Board selection is driven by `RTCLAW_BOARD` for ESP32 platforms.
+Board-specific configs live under `platform/<chip>/boards/<board>/`.
 
-### ESP32-S3 (platform/esp32s3/)
-
-- CPU: Xtensa LX7 (dual-core), 240MHz
-- RAM: 512KB SRAM + 8MB PSRAM (real hardware)
-- WiFi: 802.11 b/g/n
-- BLE: Bluetooth 5.0 LE
-- RTOS: ESP-IDF + FreeRTOS
-- Build: Meson (cross-compile) + CMake/idf.py (link + flash)
-- QEMU: Espressif fork (qemu-system-xtensa), OpenCores Ethernet (no WiFi sim)
-- Boards: qemu (4MB), default (16MB + 8MB PSRAM real hardware)
-
-### vexpress-a9 QEMU (platform/vexpress-a9/)
-
-- CPU: ARM Cortex-A9 (dual-core)
-- RTOS: RT-Thread
-- Build: Meson (cross-compile) + SCons (link)
-- Peripherals: UART, Ethernet, LCD, SD card
-
-## Communication Flow
+## Build Flow
 
 ```
-External (MQTT/HTTP)
-       |
-       v
-  +---------+
-  | net_svc |
-  +----+----+
-       |
-       v
-  +---------+     +---------+
-  | gateway |---->| swarm   |---- other rt-claw nodes
-  +----+----+     +---------+
-       |
-       v
-  +---------+
-  |ai_engine|
-  +---------+
+Makefile (entry point)
+    |
+    +---> scripts/gen-esp32{c3,s3}-cross.py   (generate Meson cross-file)
+    |
+    +---> meson setup + meson compile
+    |         |
+    |         +---> claw/      --> librtclaw.a
+    |         +---> osal/      --> libosal.a
+    |
+    +---> platform native build
+              |
+              +---> esp32c3/esp32s3: idf.py build (CMakeLists.txt links .a)
+              +---> vexpress-a9:     scons (SConstruct links .a)
+              |
+              +---> Final firmware binary in build/<platform>/
 ```
 
-## ESP32-C3 Resource Budget
+## Event Priority Model
+
+| Priority | Class | Latency | Examples |
+|----------|-------|---------|----------|
+| P0 | Reflex | 1-10 ms | ISR handlers, hardware interrupts |
+| P1 | Control | 10-50 ms | Motor control, sensor polling |
+| P2 | Interaction | 50-150 ms | Gateway routing (thread prio 15), shell I/O |
+| P3 | AI | Best-effort | AI engine (thread prio 5-10), swarm sync |
+
+## Resource Budget (ESP32-C3)
 
 | Module | SRAM | Notes |
 |--------|------|-------|
-| ESP-IDF + WiFi + TLS | ~160KB | System overhead |
-| Gateway | ~8KB | MQ 16x256B + thread |
-| Swarm | ~12KB | 32 nodes + ESP-NOW |
-| Net (MQTT) | ~25KB | Client + buffers |
-| AI Engine | ~15KB | LLM client + conversation memory |
-| App + CLI | ~10KB | Main + shell |
-| **Total** | **~230KB** | ~170KB headroom |
+| ESP-IDF + WiFi + TLS | ~160 KB | System overhead |
+| Gateway + Scheduler | ~12 KB | MQ 16x256B + threads + timer |
+| AI Engine + Memory | ~15 KB | HTTP client + conversation ring buffer |
+| Tools | ~4 KB | 24 tool descriptors + handlers |
+| Swarm + Heartbeat | ~14 KB | UDP socket + node table + timer |
+| Shell + App | ~10 KB | Line buffer + command table |
+| **Total** | **~215 KB** | ~25 KB headroom on 240 KB available |
