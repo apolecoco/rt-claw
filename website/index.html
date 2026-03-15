@@ -867,10 +867,14 @@
                     <div class="flash-config">
                         <div class="flash-field">
                             <label data-en="Platform" data-zh="平台">Platform</label>
-                            <select id="flash-platform">
-                                <option value="esp32s3" selected>ESP32-S3 (WiFi + PSRAM)</option>
+                            <select id="flash-platform" onchange="updateBoardOptions()">
                                 <option value="esp32c3">ESP32-C3 (RISC-V)</option>
+                                <option value="esp32s3">ESP32-S3 (Xtensa LX7)</option>
                             </select>
+                        </div>
+                        <div class="flash-field">
+                            <label data-en="Board" data-zh="开发板">Board</label>
+                            <select id="flash-board"></select>
                         </div>
                         <div class="flash-field">
                             <label data-en="Baud Rate" data-zh="波特率">Baud Rate</label>
@@ -980,6 +984,30 @@ const PLATFORM_CHIPS = {
     esp32c3: 'ESP32C3',
 };
 
+const BOARD_OPTIONS = {
+    esp32c3: [
+        { value: 'devkit', label: 'Generic DevKit (4 MB)' },
+        { value: 'xiaozhi-xmini', label: 'Xiaozhi XMini (16 MB)' },
+    ],
+    esp32s3: [
+        { value: 'default', label: 'Generic DevKit (16 MB + 8 MB PSRAM)' },
+    ],
+};
+
+function updateBoardOptions() {
+    var platform = document.getElementById('flash-platform').value;
+    var boardSelect = document.getElementById('flash-board');
+    var boards = BOARD_OPTIONS[platform] || [];
+    boardSelect.innerHTML = '';
+    boards.forEach(function(b) {
+        var opt = document.createElement('option');
+        opt.value = b.value;
+        opt.textContent = b.label;
+        boardSelect.appendChild(opt);
+    });
+}
+updateBoardOptions();
+
 const flashBtn = document.getElementById('flash-btn');
 const flashEraseBtn = document.getElementById('flash-erase-btn');
 const flashLog = document.getElementById('flash-log');
@@ -1046,6 +1074,7 @@ window.flashFirmware = async function() {
 
         /* 3. Verify chip matches selected platform */
         const platform = document.getElementById('flash-platform').value;
+        const board = document.getElementById('flash-board').value;
         const expectedChip = PLATFORM_CHIPS[platform];
         const chipNorm = chip.toUpperCase().replace(/[-_ ()]/g, '');
         if (!chipNorm.includes(expectedChip)) {
@@ -1057,9 +1086,9 @@ window.flashFirmware = async function() {
         }
 
         /* 4. Fetch firmware manifest */
-        const firmwareBase = 'firmware/' + platform + '/';
+        const firmwareBase = 'firmware/' + platform + '-' + board + '/';
         flashBtn.innerHTML = 'Downloading firmware...';
-        espTerminal.writeLine('Fetching firmware for ' + platform + '...');
+        espTerminal.writeLine('Fetching firmware for ' + platform + '-' + board + '...');
 
         let manifest;
         try {
@@ -1068,9 +1097,9 @@ window.flashFirmware = async function() {
             manifest = await resp.json();
         } catch (e) {
             throw new Error(
-                'Firmware not available for ' + platform + '.\n' +
+                'Firmware not available for ' + platform + '-' + board + '.\n' +
                 'CI may not have built it yet.\n' +
-                'Build locally: make ' + platform + ' && make flash-' + platform
+                'Build locally: make build-' + platform + '-' + board
             );
         }
 

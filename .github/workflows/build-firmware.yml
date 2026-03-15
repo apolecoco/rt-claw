@@ -34,18 +34,24 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - target: esp32c3
+          - target: esp32c3-devkit
             make_target: build-esp32c3-devkit
             build_dir: build/esp32c3-devkit/idf
             esp_targets: esp32c3
             chip_family: ESP32-C3
-            artifact_name: esp32c3-firmware
-          - target: esp32s3
+            artifact_name: esp32c3-devkit-firmware
+          - target: esp32c3-xiaozhi-xmini
+            make_target: build-esp32c3-xiaozhi-xmini
+            build_dir: build/esp32c3-xiaozhi-xmini/idf
+            esp_targets: esp32c3
+            chip_family: ESP32-C3
+            artifact_name: esp32c3-xiaozhi-xmini-firmware
+          - target: esp32s3-default
             make_target: esp32s3
             build_dir: build/esp32s3-default/idf
             esp_targets: esp32s3
             chip_family: ESP32-S3
-            artifact_name: esp32s3-firmware
+            artifact_name: esp32s3-default-firmware
     steps:
       - uses: actions/checkout@v4
         with:
@@ -95,17 +101,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download ESP32-C3 firmware artifact
+      - name: Download ESP32-C3 devkit firmware
         uses: actions/download-artifact@v4
         with:
-          name: esp32c3-firmware
-          path: website/firmware/esp32c3/
+          name: esp32c3-devkit-firmware
+          path: website/firmware/esp32c3-devkit/
 
-      - name: Download ESP32-S3 firmware artifact
+      - name: Download ESP32-C3 xiaozhi-xmini firmware
         uses: actions/download-artifact@v4
         with:
-          name: esp32s3-firmware
-          path: website/firmware/esp32s3/
+          name: esp32c3-xiaozhi-xmini-firmware
+          path: website/firmware/esp32c3-xiaozhi-xmini/
+
+      - name: Download ESP32-S3 default firmware
+        uses: actions/download-artifact@v4
+        with:
+          name: esp32s3-default-firmware
+          path: website/firmware/esp32s3-default/
 
       - name: Copy images to website
         run: cp -r images/ website/img/

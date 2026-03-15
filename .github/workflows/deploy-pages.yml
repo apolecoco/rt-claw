@@ -33,20 +33,28 @@ jobs:
           cp -r images/ website/img/
           cp -r docs/ website/docs/
 
-      - name: Download ESP32-S3 firmware (if available)
+      - name: Download ESP32-C3 devkit firmware (if available)
         uses: dawidd6/action-download-artifact@v6
         with:
           workflow: build-firmware.yml
-          name: esp32s3-firmware
-          path: website/firmware/esp32s3/
+          name: esp32c3-devkit-firmware
+          path: website/firmware/esp32c3-devkit/
           if_no_artifact_found: warn
 
-      - name: Download ESP32-C3 firmware (if available)
+      - name: Download ESP32-C3 xiaozhi-xmini firmware (if available)
         uses: dawidd6/action-download-artifact@v6
         with:
           workflow: build-firmware.yml
-          name: esp32c3-firmware
-          path: website/firmware/esp32c3/
+          name: esp32c3-xiaozhi-xmini-firmware
+          path: website/firmware/esp32c3-xiaozhi-xmini/
+          if_no_artifact_found: warn
+
+      - name: Download ESP32-S3 default firmware (if available)
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          workflow: build-firmware.yml
+          name: esp32s3-default-firmware
+          path: website/firmware/esp32s3-default/
           if_no_artifact_found: warn
 
       - uses: actions/configure-pages@v5
