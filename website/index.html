@@ -476,9 +476,9 @@
         .serial-ctrl-btn:hover { border-color: var(--accent); color: var(--accent); }
         .serial-ctrl-btn.active { border-color: var(--accent3); color: var(--accent3); }
         .serial-output {
-            padding: 0.75rem 1rem; height: 360px; overflow-y: auto;
-            font-family: var(--mono); font-size: 0.8rem; line-height: 1.5;
-            color: #d4d4d4; word-break: break-all;
+            padding: 0.75rem 1rem; height: 360px; max-height: 360px;
+            overflow-y: auto; font-family: var(--mono); font-size: 0.8rem;
+            line-height: 1.5; color: #d4d4d4; word-break: break-all;
         }
         .serial-output > div { white-space: pre-wrap; min-height: 1.2em; }
         .serial-input-bar {
@@ -502,7 +502,7 @@
             z-index: 10; border-radius: var(--radius);
         }
         .serial-panel.expanded .serial-output {
-            height: auto; flex: 1;
+            height: auto; max-height: none; flex: 1;
         }
         .serial-msg-success { color: #4ade80; }
         .serial-msg-error { color: #f87171; }
