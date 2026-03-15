@@ -46,6 +46,7 @@ typedef struct {
     char name[24];
     char *prompt;               /* heap-allocated, freed on ctx_free */
     int  in_use;
+    int  pending;               /* 1 = queued for next worker cycle */
     uint32_t interval_s;        /* for NVS persistence */
     int32_t  count;             /* for NVS persistence */
     sched_reply_fn_t reply_fn;
@@ -126,6 +127,25 @@ int sched_tool_remove_by_name(const char *name)
     return CLAW_OK;
 }
 
+/*
+ * Find the next pending task using round-robin scan.
+ * Must be called with s_worker_lock held.
+ */
+static int s_rr_idx;
+
+static sched_ai_ctx_t *drain_pending(void)
+{
+    for (int i = 0; i < SCHED_AI_MAX; i++) {
+        int idx = (s_rr_idx + i) % SCHED_AI_MAX;
+        if (s_ctx[idx].in_use && s_ctx[idx].pending) {
+            s_ctx[idx].pending = 0;
+            s_rr_idx = (idx + 1) % SCHED_AI_MAX;
+            return &s_ctx[idx];
+        }
+    }
+    return NULL;
+}
+
 /* Worker thread — runs AI calls with sufficient stack */
 static void ai_worker_thread(void *arg)
 {
@@ -134,14 +154,17 @@ static void ai_worker_thread(void *arg)
     while (1) {
         claw_sem_take(s_worker_sem, CLAW_WAIT_FOREVER);
 
+next_task:
         claw_mutex_lock(s_worker_lock, CLAW_WAIT_FOREVER);
         sched_ai_ctx_t *ctx = s_pending_ctx;
         s_pending_ctx = NULL;
-        s_worker_busy = 1;
+        if (!ctx) {
+            ctx = drain_pending();
+        }
+        s_worker_busy = (ctx != NULL);
         claw_mutex_unlock(s_worker_lock);
 
         if (!ctx) {
-            s_worker_busy = 0;
             continue;
         }
 
@@ -232,9 +255,8 @@ static void ai_worker_thread(void *arg)
         claw_free(reply);
         ai_set_channel_hint(NULL);
 
-        claw_mutex_lock(s_worker_lock, CLAW_WAIT_FOREVER);
-        s_worker_busy = 0;
-        claw_mutex_unlock(s_worker_lock);
+        /* Check for more pending tasks before sleeping */
+        goto next_task;
     }
 }
 
@@ -247,10 +269,14 @@ static void sched_ai_callback(void *arg)
     sched_ai_ctx_t *ctx = (sched_ai_ctx_t *)arg;
 
     claw_mutex_lock(s_worker_lock, CLAW_WAIT_FOREVER);
-    if (s_worker_busy) {
-        /* Worker still processing previous call, skip */
+    if (s_worker_busy || s_pending_ctx) {
+        /*
+         * Worker busy — mark pending instead of dropping.
+         * The worker drains all pending tasks after each cycle.
+         */
+        ctx->pending = 1;
         claw_mutex_unlock(s_worker_lock);
-        CLAW_LOGD(TAG, "worker busy, skipping tick");
+        CLAW_LOGD(TAG, "worker busy, '%s' queued", ctx->name);
         return;
     }
     s_pending_ctx = ctx;
