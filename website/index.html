@@ -1011,7 +1011,7 @@ const BOARD_OPTIONS = {
     ],
 };
 
-function updateBoardOptions() {
+window.updateBoardOptions = function() {
     var platform = document.getElementById('flash-platform').value;
     var boardSelect = document.getElementById('flash-board');
     var boards = BOARD_OPTIONS[platform] || [];
@@ -1022,8 +1022,8 @@ function updateBoardOptions() {
         opt.textContent = b.label;
         boardSelect.appendChild(opt);
     });
-}
-updateBoardOptions();
+};
+window.updateBoardOptions();
 
 const flashBtn = document.getElementById('flash-btn');
 const flashEraseBtn = document.getElementById('flash-erase-btn');
