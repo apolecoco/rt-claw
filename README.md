@@ -53,7 +53,7 @@ ESP32-S3 WiFi support adapted from [MimiClaw](https://github.com/memovai/mimicla
 ```
 +--------------------------------------------------------------+
 |                     rt-claw Application                      |
-| gateway | net | swarm | ai_engine | shell | sched | feishu   |
+|    gateway | net | swarm | ai_engine | shell | sched | im    |
 +--------------------------------------------------------------+
 |                      skills (AI Skills)                      |
 |             (one skill composes multiple tools)              |
