@@ -8,14 +8,18 @@
 #ifdef CONFIG_RTCLAW_SKILL_ENABLE
 #include "claw/services/ai/ai_skill.h"
 #endif
+#ifdef CONFIG_RTCLAW_AUDIO_ENABLE
 #include "drivers/audio/espressif/es8311_audio.h"
+#endif
 
 #include <string.h>
 #include <stdio.h>
 
 #define TAG "tools"
 
+#ifdef CONFIG_RTCLAW_AUDIO_ENABLE
 static void claw_tools_register_audio(void);
+#endif
 
 static claw_tool_t s_tools[CLAW_TOOL_MAX];
 static int s_tool_count;
@@ -45,13 +49,16 @@ int claw_tools_init(void)
 #endif
 
     /* Audio tools (always register — stubs on non-ESP-IDF) */
+#ifdef CONFIG_RTCLAW_AUDIO_ENABLE
     claw_tools_register_audio();
+#endif
 
     CLAW_LOGI(TAG, "%d tools registered", s_tool_count);
     return CLAW_OK;
 }
 
-/* ---- Audio tools ---- */
+#ifdef CONFIG_RTCLAW_AUDIO_ENABLE
+/* ---- Audio tools (requires CONFIG_RTCLAW_AUDIO_ENABLE) ---- */
 
 static int tool_audio_beep(const cJSON *params, cJSON *result)
 {
@@ -184,6 +191,7 @@ static void claw_tools_register_audio(void)
         "Set the speaker volume (0-100).",
         schema_volume, tool_audio_volume);
 }
+#endif /* CONFIG_RTCLAW_AUDIO_ENABLE */
 
 int claw_tool_register(const char *name, const char *description,
                        const char *input_schema_json,
