@@ -177,13 +177,21 @@ static int tool_memory_info(const cJSON *params, cJSON *result)
     size_t total = heap_caps_get_total_size(MALLOC_CAP_DEFAULT);
     size_t free_sz = heap_caps_get_free_size(MALLOC_CAP_DEFAULT);
     size_t min_free = heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT);
+    size_t largest = heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT);
 
     cJSON_AddStringToObject(result, "status", "ok");
     cJSON_AddNumberToObject(result, "heap_total_bytes", total);
     cJSON_AddNumberToObject(result, "heap_free_bytes", free_sz);
     cJSON_AddNumberToObject(result, "heap_min_free_bytes", min_free);
+    cJSON_AddNumberToObject(result, "heap_largest_block", largest);
     cJSON_AddNumberToObject(result, "heap_used_percent",
                             (double)(total - free_sz) / total * 100.0);
+
+    /* fragmentation: 100% = all fragments, 0% = single block */
+    if (free_sz > 0) {
+        double frag = (1.0 - (double)largest / free_sz) * 100.0;
+        cJSON_AddNumberToObject(result, "fragmentation_percent", frag);
+    }
 
     return CLAW_OK;
 }
@@ -231,8 +239,8 @@ void claw_tools_register_system(void)
         0, CLAW_TOOL_LOCAL_ONLY);
 
     claw_tool_register("memory_info",
-        "Get heap memory status: total, free, minimum-ever-free bytes, "
-        "and usage percentage.",
+        "Get heap memory status: total, free, minimum-ever-free, "
+        "largest contiguous block, usage and fragmentation percent.",
         schema_empty, tool_memory_info,
         0, CLAW_TOOL_LOCAL_ONLY);
 
