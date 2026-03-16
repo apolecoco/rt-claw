@@ -64,7 +64,12 @@
 #define CLAW_HEARTBEAT_REPLY_MAX    512
 #define CLAW_HEARTBEAT_THREAD_STACK 8192
 
-/* ---- AI Engine ---- */
+/* ---- AI Engine (worker thread) ---- */
+#define CLAW_AI_QUEUE_DEPTH         4
+#define CLAW_AI_WORKER_STACK        8192
+#define CLAW_AI_WORKER_PRIO         15
+
+/* ---- AI Engine (API) ---- */
 #ifndef CONFIG_RTCLAW_AI_API_KEY
 #define CONFIG_RTCLAW_AI_API_KEY      ""
 #endif

@@ -53,21 +53,43 @@ static char s_model[AI_MODEL_MAX];
 #define API_MAX_RETRIES    2
 #define API_RETRY_BASE_MS  2000
 
-static claw_mutex_t s_api_lock;
+/*
+ * Per-caller state: callers set these before ai_chat(), which
+ * snapshots them into the request struct for the worker thread.
+ */
 static ai_status_cb_t s_status_cb;
 static char s_channel_hint[512];
+static int s_channel = AI_CHANNEL_SHELL;
 
 /*
  * API format: 0 = Claude (Anthropic), 1 = OpenAI-compatible.
  * Auto-detected from model name in ai_engine_init().
  */
 static int s_openai_compat;
-static int s_channel = AI_CHANNEL_SHELL;
+
+/* ---- Request queue ---- */
+
+struct ai_request {
+    const char     *input;
+    char           *reply;
+    size_t          reply_size;
+    int             channel;
+    char            channel_hint[512];
+    ai_status_cb_t  status_cb;
+    int             raw;           /* 0 = ai_chat, 1 = ai_chat_raw */
+    claw_sem_t      done;
+    int             result;
+};
+
+static claw_mq_t s_ai_queue;
+
+/* Worker-local active callback (set per request) */
+static ai_status_cb_t s_active_cb;
 
 static inline void notify_status(int st, const char *detail)
 {
-    if (s_status_cb) {
-        s_status_cb(st, detail);
+    if (s_active_cb) {
+        s_active_cb(st, detail);
     }
 }
 
@@ -666,29 +688,10 @@ static int ai_chat_with_messages(const char *system_prompt,
     return ret;
 }
 
-int ai_chat(const char *user_msg, char *reply, size_t reply_size)
+/* ---- Worker: process a single ai_chat request ---- */
+
+static void do_chat(struct ai_request *req)
 {
-    if (!user_msg || !reply || reply_size == 0) {
-        return CLAW_ERROR;
-    }
-
-    if (strlen(s_api_key) == 0) {
-        snprintf(reply, reply_size, "[no API key configured]");
-        return CLAW_ERROR;
-    }
-
-    if (claw_mutex_lock(s_api_lock, 5000) != CLAW_OK) {
-        snprintf(reply, reply_size,
-                 "[AI is busy processing another task, please retry]");
-        return CLAW_ERROR;
-    }
-
-    /*
-     * Memory pressure check: if free heap is critically low,
-     * clear conversation history to reclaim memory and warn
-     * the user.  History is the biggest dynamic consumer
-     * (~2-5KB per message in the cJSON tree).
-     */
 #ifdef CLAW_PLATFORM_ESP_IDF
     {
         uint32_t free_heap = esp_get_free_heap_size();
@@ -702,29 +705,22 @@ int ai_chat(const char *user_msg, char *reply, size_t reply_size)
     }
 #endif
 
-    ai_memory_add("user", user_msg, s_channel);
+    ai_memory_add("user", req->input, req->channel);
 
     char *sys_prompt = build_system_prompt();
     if (!sys_prompt) {
-        claw_mutex_unlock(s_api_lock);
-        return CLAW_ERROR;
+        req->result = CLAW_ERROR;
+        return;
     }
 
-    cJSON *messages = ai_memory_build(s_channel);
+    cJSON *messages = ai_memory_build(req->channel);
     cJSON *tools = claw_tools_to_json();
 
-    int ret = ai_chat_with_messages(sys_prompt, messages, tools,
-                                     reply, reply_size);
+    req->result = ai_chat_with_messages(sys_prompt, messages, tools,
+                                         req->reply, req->reply_size);
 
-    /*
-     * Only store the final assistant text reply into memory.
-     * Intermediate tool_use / tool_result messages are NOT saved
-     * because drop_oldest_pair() drops 2 at a time and can orphan
-     * a tool_result without its matching tool_use, causing
-     * "unexpected tool_use_id" errors on the next API call.
-     */
-    if (ret == CLAW_OK && reply[0] != '\0') {
-        ai_memory_add("assistant", reply, s_channel);
+    if (req->result == CLAW_OK && req->reply[0] != '\0') {
+        ai_memory_add("assistant", req->reply, req->channel);
     }
 
     claw_free(sys_prompt);
@@ -732,9 +728,119 @@ int ai_chat(const char *user_msg, char *reply, size_t reply_size)
     if (tools) {
         cJSON_Delete(tools);
     }
+}
 
-    claw_mutex_unlock(s_api_lock);
-    return ret;
+/* ---- Worker: process a single ai_chat_raw request ---- */
+
+static void do_chat_raw(struct ai_request *req)
+{
+    char *sys_prompt = build_system_prompt();
+    if (!sys_prompt) {
+        req->result = CLAW_ERROR;
+        return;
+    }
+
+    cJSON *messages = cJSON_CreateArray();
+    cJSON *user_m = cJSON_CreateObject();
+    cJSON_AddStringToObject(user_m, "role", "user");
+    cJSON_AddStringToObject(user_m, "content", req->input);
+    cJSON_AddItemToArray(messages, user_m);
+
+    cJSON *tools = claw_tools_to_json_exclude("lcd_");
+
+    req->result = ai_chat_with_messages(sys_prompt, messages, tools,
+                                         req->reply, req->reply_size);
+
+    claw_free(sys_prompt);
+    cJSON_Delete(messages);
+    if (tools) {
+        cJSON_Delete(tools);
+    }
+}
+
+/* ---- AI worker thread ---- */
+
+static void ai_worker_thread(void *arg)
+{
+    (void)arg;
+    struct ai_request *req;
+
+    CLAW_LOGI(TAG, "worker started");
+
+    while (1) {
+        if (claw_mq_recv(s_ai_queue, &req, sizeof(req),
+                          CLAW_WAIT_FOREVER) != CLAW_OK) {
+            continue;
+        }
+
+        /* Apply per-request context */
+        snprintf(s_channel_hint, sizeof(s_channel_hint),
+                 "%s", req->channel_hint);
+        s_active_cb = req->status_cb;
+
+        CLAW_LOGD(TAG, "processing request (ch=%d, raw=%d)",
+                  req->channel, req->raw);
+
+        if (req->raw) {
+            do_chat_raw(req);
+        } else {
+            do_chat(req);
+        }
+
+        s_active_cb = NULL;
+        claw_sem_give(req->done);
+    }
+}
+
+/* ---- Submit request and wait ---- */
+
+static int submit_and_wait(struct ai_request *req)
+{
+    req->done = claw_sem_create("ai_done", 0);
+    if (!req->done) {
+        snprintf(req->reply, req->reply_size,
+                 "[internal error: sem create failed]");
+        return CLAW_ERROR;
+    }
+
+    struct ai_request *ptr = req;
+    if (claw_mq_send(s_ai_queue, &ptr, sizeof(ptr),
+                      CLAW_NO_WAIT) != CLAW_OK) {
+        claw_sem_delete(req->done);
+        snprintf(req->reply, req->reply_size,
+                 "[AI is busy, please retry]");
+        return CLAW_ERROR;
+    }
+
+    claw_sem_take(req->done, CLAW_WAIT_FOREVER);
+    claw_sem_delete(req->done);
+    return req->result;
+}
+
+int ai_chat(const char *user_msg, char *reply, size_t reply_size)
+{
+    if (!user_msg || !reply || reply_size == 0) {
+        return CLAW_ERROR;
+    }
+
+    if (strlen(s_api_key) == 0) {
+        snprintf(reply, reply_size, "[no API key configured]");
+        return CLAW_ERROR;
+    }
+
+    struct ai_request req = {
+        .input = user_msg,
+        .reply = reply,
+        .reply_size = reply_size,
+        .channel = s_channel,
+        .status_cb = s_status_cb,
+        .raw = 0,
+        .result = CLAW_ERROR,
+    };
+    snprintf(req.channel_hint, sizeof(req.channel_hint),
+             "%s", s_channel_hint);
+
+    return submit_and_wait(&req);
 }
 
 int ai_chat_raw(const char *prompt, char *reply, size_t reply_size)
@@ -748,42 +854,19 @@ int ai_chat_raw(const char *prompt, char *reply, size_t reply_size)
         return CLAW_ERROR;
     }
 
-    if (claw_mutex_lock(s_api_lock, 5000) != CLAW_OK) {
-        snprintf(reply, reply_size,
-                 "[AI is busy processing another task, please retry]");
-        return CLAW_ERROR;
-    }
+    struct ai_request req = {
+        .input = prompt,
+        .reply = reply,
+        .reply_size = reply_size,
+        .channel = s_channel,
+        .status_cb = s_status_cb,
+        .raw = 1,
+        .result = CLAW_ERROR,
+    };
+    snprintf(req.channel_hint, sizeof(req.channel_hint),
+             "%s", s_channel_hint);
 
-    char *sys_prompt = build_system_prompt();
-    if (!sys_prompt) {
-        claw_mutex_unlock(s_api_lock);
-        return CLAW_ERROR;
-    }
-
-    cJSON *messages = cJSON_CreateArray();
-    cJSON *user_m = cJSON_CreateObject();
-    cJSON_AddStringToObject(user_m, "role", "user");
-    cJSON_AddStringToObject(user_m, "content", prompt);
-    cJSON_AddItemToArray(messages, user_m);
-
-    /*
-     * Exclude LCD tools — raw calls run in background contexts
-     * (scheduled tasks, skills) where MMIO framebuffer writes
-     * would block for minutes on QEMU.
-     */
-    cJSON *tools = claw_tools_to_json_exclude("lcd_");
-
-    int ret = ai_chat_with_messages(sys_prompt, messages, tools,
-                                     reply, reply_size);
-
-    claw_free(sys_prompt);
-    cJSON_Delete(messages);
-    if (tools) {
-        cJSON_Delete(tools);
-    }
-
-    claw_mutex_unlock(s_api_lock);
-    return ret;
+    return submit_and_wait(&req);
 }
 
 /* ---- Runtime config setters/getters ---- */
@@ -832,9 +915,11 @@ int ai_engine_init(void)
                  "%s", CONFIG_RTCLAW_AI_MODEL);
     }
 
-    s_api_lock = claw_mutex_create("ai_api");
-    if (!s_api_lock) {
-        CLAW_LOGE(TAG, "mutex create failed");
+    s_ai_queue = claw_mq_create("ai_q",
+                                sizeof(struct ai_request *),
+                                CLAW_AI_QUEUE_DEPTH);
+    if (!s_ai_queue) {
+        CLAW_LOGE(TAG, "request queue create failed");
         return CLAW_ERROR;
     }
 
@@ -849,6 +934,13 @@ int ai_engine_init(void)
     s_openai_compat = (strncmp(s_model, "claude", 6) != 0);
     CLAW_LOGI(TAG, "api format: %s",
               s_openai_compat ? "openai" : "claude");
+
+    if (!claw_thread_create("ai_worker", ai_worker_thread, NULL,
+                             CLAW_AI_WORKER_STACK,
+                             CLAW_AI_WORKER_PRIO)) {
+        CLAW_LOGE(TAG, "worker thread create failed");
+        return CLAW_ERROR;
+    }
 
     if (strlen(s_api_key) == 0) {
         CLAW_LOGW(TAG, "no API key configured");

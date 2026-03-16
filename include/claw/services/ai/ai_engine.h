@@ -59,12 +59,18 @@ int  ai_get_channel(void);
 /**
  * Send a user message to the LLM and receive a reply.
  * Stores user/assistant messages in conversation memory.
+ *
+ * Thread-safe: requests from multiple channels (shell, Feishu,
+ * Telegram, scheduler) are serialized through an internal queue
+ * and processed by a dedicated AI worker thread. If the queue is
+ * full, returns immediately with "[AI is busy, please retry]".
  */
 int ai_chat(const char *user_msg, char *reply, size_t reply_size);
 
 /**
  * One-shot LLM call without conversation memory.
  * Used by skill system to avoid polluting main history.
+ * Same queue-based concurrency as ai_chat().
  */
 int ai_chat_raw(const char *prompt, char *reply, size_t reply_size);
 
