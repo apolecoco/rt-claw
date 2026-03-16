@@ -154,7 +154,6 @@ static void ai_worker_thread(void *arg)
     while (1) {
         claw_sem_take(s_worker_sem, CLAW_WAIT_FOREVER);
 
-next_task:
         claw_mutex_lock(s_worker_lock, CLAW_WAIT_FOREVER);
         sched_ai_ctx_t *ctx = s_pending_ctx;
         s_pending_ctx = NULL;
@@ -255,8 +254,9 @@ next_task:
         claw_free(reply);
         ai_set_channel_hint(NULL);
 
-        /* Check for more pending tasks before sleeping */
-        goto next_task;
+        claw_mutex_lock(s_worker_lock, CLAW_WAIT_FOREVER);
+        s_worker_busy = 0;
+        claw_mutex_unlock(s_worker_lock);
     }
 }
 
@@ -272,10 +272,12 @@ static void sched_ai_callback(void *arg)
     if (s_worker_busy || s_pending_ctx) {
         /*
          * Worker busy — mark pending instead of dropping.
-         * The worker drains all pending tasks after each cycle.
+         * sem_give wakes the worker so it picks this up after
+         * finishing the current task (one task per wakeup).
          */
         ctx->pending = 1;
         claw_mutex_unlock(s_worker_lock);
+        claw_sem_give(s_worker_sem);
         CLAW_LOGD(TAG, "worker busy, '%s' queued", ctx->name);
         return;
     }
