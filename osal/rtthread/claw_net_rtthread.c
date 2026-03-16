@@ -6,8 +6,8 @@
  * HTTP only (no TLS). For HTTPS use an HTTP proxy with TLS termination.
  */
 
-#include "osal/claw_net.h"
 #include "osal/claw_os.h"
+#include "osal/claw_net.h"
 
 #include <string.h>
 #include <stdio.h>

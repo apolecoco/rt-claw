@@ -7,8 +7,8 @@
  * can be added later without changing callers.
  */
 
-#include "osal/claw_kv.h"
 #include "osal/claw_os.h"
+#include "osal/claw_kv.h"
 
 #include <string.h>
 #include <stdio.h>

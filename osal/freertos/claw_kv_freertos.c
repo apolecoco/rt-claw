@@ -5,8 +5,8 @@
  * OSAL KV storage — ESP-IDF NVS Flash backend.
  */
 
-#include "osal/claw_kv.h"
 #include "osal/claw_os.h"
+#include "osal/claw_kv.h"
 
 #ifdef CLAW_PLATFORM_ESP_IDF
 
