@@ -7,7 +7,8 @@ set(MAIN_REQUIRES rt_claw console esp_driver_uart esp_driver_usb_serial_jtag)
 
 list(APPEND MAIN_SRCS
     "${PLATFORM_DIR}/boards/${RTCLAW_BOARD}/board.c"
-    "${PROJECT_ROOT}/drivers/serial/espressif/console.c")
+    "${PROJECT_ROOT}/drivers/serial/espressif/console.c"
+    "${PROJECT_ROOT}/platform/common/espressif/esp_shell.c")
 
 if(CONFIG_ESP_WIFI_ENABLED)
     list(APPEND MAIN_SRCS
