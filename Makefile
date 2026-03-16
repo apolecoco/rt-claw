@@ -38,6 +38,23 @@ help:
 	@echo "  GDB=1       Debug mode (GDB port 1234)"
 	@echo "  GRAPHICS=1  LCD display window (QEMU only)"
 	@echo ""
+	@echo "Tests (unit — cross-compiled, QEMU semihosting):"
+	@echo "  make test-unit             Build + run unit tests (vexpress-a9)"
+	@echo ""
+	@echo "Tests (functional — requires pre-built firmware):"
+	@echo "  make test-functional       Run all functional tests"
+	@echo "  make test-boot             Boot/banner tests only"
+	@echo "  make test-shell            Shell command tests only"
+	@echo "  make test-persist          KV persistence tests only"
+	@echo "  make test-online           AI connectivity tests only"
+	@echo ""
+	@echo "Tests (CI — profile switch + build + test):"
+	@echo "  make test-smoke-esp32c3    Smoke tests (ESP32-C3)"
+	@echo "  make test-smoke-esp32s3    Smoke tests (ESP32-S3)"
+	@echo "  make test-smoke-vexpress   Smoke tests (vexpress-a9)"
+	@echo "  make test-online-esp32c3   AI online tests (ESP32-C3)"
+	@echo "  make test-online-esp32s3   AI online tests (ESP32-S3)"
+	@echo ""
 	@echo "Clean:"
 	@echo "  make clean                 Clean all build artifacts"
 	@echo "  make clean-<platform>      Clean specific platform"
@@ -296,18 +313,96 @@ clean-vexpress-a9:
 clean-esp32s3:
 	rm -rf $(BUILD_DIR)/esp32s3-*
 
-# --- Tests ---
+# --- Flash image generation (no interactive QEMU) ---
 
-.PHONY: swarm-test
-swarm-test: run-esp32c3-qemu-flash
-	scripts/swarm-test.sh
-
-# Build + generate flash image only (no interactive QEMU)
 .PHONY: run-esp32c3-qemu-flash
 run-esp32c3-qemu-flash: build-esp32c3-qemu
-	@echo ">>> Generating merged flash image ..."
+	@echo ">>> Generating merged flash image (ESP32-C3) ..."
 	cd $(BUILD_DIR)/esp32c3-qemu/idf && esptool.py --chip esp32c3 merge_bin \
 		--fill-flash-size 4MB -o flash_image.bin @flash_args
+
+.PHONY: run-esp32s3-qemu-flash
+run-esp32s3-qemu-flash: build-esp32s3-qemu
+	@echo ">>> Generating merged flash image (ESP32-S3) ..."
+	cd $(BUILD_DIR)/esp32s3-qemu/idf && esptool.py --chip esp32s3 merge_bin \
+		--fill-flash-size 4MB -o flash_image.bin @flash_args
+
+# --- Functional tests (Python) ---
+#
+# Quick targets: run against pre-built firmware.
+# CI targets (test-smoke-*, test-online-*): profile switch + build + test.
+#
+# Env vars:
+#   RTCLAW_TEST_PLATFORM  Platform to test (default: esp32c3-qemu)
+#   RTCLAW_AI_API_KEY     Required for test-online-* targets
+
+FUNCTEST = python3 -m unittest discover -s tests/functional -v
+
+.PHONY: test-functional
+test-functional:
+	$(FUNCTEST)
+
+.PHONY: test-boot
+test-boot:
+	$(FUNCTEST) -k TestBoot
+
+.PHONY: test-shell
+test-shell:
+	$(FUNCTEST) -k TestShell
+
+.PHONY: test-persist
+test-persist:
+	$(FUNCTEST) -k TestKvPersistence
+
+.PHONY: test-online
+test-online:
+	$(FUNCTEST) -k TestAiOnline
+
+# --- Unit tests (RT-Thread / vexpress-a9 / semihosting) ---
+
+.PHONY: test-unit
+test-unit:
+	python3 tests/unit/run.py
+
+# --- CI pipeline targets (profile switch + build + flash + test) ---
+
+C3_DEFAULTS := platform/esp32c3/boards/qemu/sdkconfig.defaults
+S3_DEFAULTS := platform/esp32s3/boards/qemu/sdkconfig.defaults
+
+# Functional test runner macro: discover from tests/functional/, filter by pattern.
+# Usage: $(call _functest,<platform>,<pattern>)
+_functest = RTCLAW_TEST_PLATFORM=$(1) python3 -m unittest discover -s tests/functional -p '$(2)' -v
+
+# Helper: switch sdkconfig profile, rebuild, run tests, restore.
+# Usage: $(call _run_profile_test,<defaults-path>,<profile>,<build-target>,<flash-target>,<platform>,<pattern>)
+define _run_profile_test
+	@cp $(1) $(1).bak
+	@cp $(1).$(2) $(1)
+	@rm -rf $(BUILD_DIR)/$(5)/idf
+	@trap 'mv $(1).bak $(1)' EXIT; \
+	$(MAKE) $(3) && $(MAKE) $(4) && \
+	$(call _functest,$(5),$(6))
+endef
+
+.PHONY: test-smoke-esp32c3
+test-smoke-esp32c3:
+	$(call _run_profile_test,$(C3_DEFAULTS),demo,build-esp32c3-qemu,run-esp32c3-qemu-flash,esp32c3-qemu,test_[bsk]*.py)
+
+.PHONY: test-smoke-esp32s3
+test-smoke-esp32s3:
+	$(call _run_profile_test,$(S3_DEFAULTS),demo,build-esp32s3-qemu,run-esp32s3-qemu-flash,esp32s3-qemu,test_[bsk]*.py)
+
+.PHONY: test-smoke-vexpress
+test-smoke-vexpress: vexpress-a9-qemu
+	$(call _functest,vexpress-a9-qemu,test_boot.py)
+
+.PHONY: test-online-esp32c3
+test-online-esp32c3: run-esp32c3-qemu-flash
+	$(call _functest,esp32c3-qemu,test_ai_online.py)
+
+.PHONY: test-online-esp32s3
+test-online-esp32s3: run-esp32s3-qemu-flash
+	$(call _functest,esp32s3-qemu,test_ai_online.py)
 
 # --- Checks ---
 .PHONY: check

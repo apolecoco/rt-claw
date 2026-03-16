@@ -46,7 +46,7 @@ concurrency:
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: ${{ matrix.timeout }}
     strategy:
       fail-fast: false
       matrix:
@@ -54,12 +54,18 @@ jobs:
           - target: esp32c3-qemu
             esp_targets: esp32c3
             qemu_tools: qemu-riscv32
+            make_target: test-smoke-esp32c3
+            timeout: 25
           - target: esp32s3-qemu
             esp_targets: esp32s3
             qemu_tools: qemu-xtensa
+            make_target: test-smoke-esp32s3
+            timeout: 45
           - target: vexpress-a9-qemu
             esp_targets: ""
             qemu_tools: none
+            make_target: test-smoke-vexpress
+            timeout: 15
 
     steps:
       - uses: actions/checkout@v4
@@ -88,11 +94,8 @@ jobs:
         run: scripts/ci/setup-esp-idf.sh "${{ matrix.esp_targets }}" "${{ matrix.qemu_tools }}"
 
       - name: Run QEMU smoke test
-        run: tests/qemu/run-smoke.sh "${{ matrix.target }}"
-
-      - name: Upload QEMU logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.target }}-smoke
-          path: ci-artifacts/
+        run: |
+          if [ -n "${{ matrix.esp_targets }}" ]; then
+            source ~/esp/esp-idf/export.sh
+          fi
+          make ${{ matrix.make_target }}

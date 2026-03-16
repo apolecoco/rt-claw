@@ -40,9 +40,11 @@ jobs:
           - target: esp32c3-qemu
             esp_targets: esp32c3
             qemu_tools: qemu-riscv32
+            make_target: test-online-esp32c3
           - target: esp32s3-qemu
             esp_targets: esp32s3
             qemu_tools: qemu-xtensa
+            make_target: test-online-esp32s3
 
     steps:
       - uses: actions/checkout@v4
@@ -83,7 +85,7 @@ jobs:
         if: ${{ steps.secrets.outputs.enabled == 'true' }}
         run: scripts/ci/setup-esp-idf.sh "${{ matrix.esp_targets }}" "${{ matrix.qemu_tools }}"
 
-      - name: Run online integration smoke
+      - name: Run online integration test
         if: ${{ steps.secrets.outputs.enabled == 'true' }}
         env:
           RTCLAW_AI_API_KEY: ${{ secrets.RTCLAW_AI_API_KEY }}
@@ -95,11 +97,5 @@ jobs:
           : "${RTCLAW_AI_API_URL:=${RTCLAW_AI_API_URL_SECRET:-https://api.anthropic.com/v1/messages}}"
           : "${RTCLAW_AI_MODEL:=${RTCLAW_AI_MODEL_SECRET:-claude-sonnet-4-5}}"
           export RTCLAW_AI_API_URL RTCLAW_AI_MODEL
-          tests/qemu/run-online.sh "${{ matrix.target }}"
-
-      - name: Upload integration logs
-        if: ${{ always() && steps.secrets.outputs.enabled == 'true' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.target }}-online
-          path: ci-artifacts/
+          source ~/esp/esp-idf/export.sh
+          make ${{ matrix.make_target }}
