@@ -28,6 +28,7 @@
 | `/skill <name> [args]` | 执行技能 |
 | `/nodes` | 显示集群节点 |
 | `/log [on\|off]` | 切换日志输出 |
+| `/log level <lvl>` | 设置日志级别（error/warn/info/debug） |
 | `/history` | 显示消息数量 |
 | `/clear` | 清空对话 |
 | `/help` | 列出命令 |
@@ -72,7 +73,7 @@ Kconfig 选项控制（Audio 除外，始终启用）。
 | 工具 | 参数 | 说明 |
 |------|------|------|
 | `system_info` | — | 显示系统信息 |
-| `memory_info` | — | 显示堆内存使用情况 |
+| `memory_info` | — | 显示堆内存使用、最大连续块、碎片率 |
 | `clear_history` | — | 清空对话历史 |
 | `system_restart` | — | 重启设备 |
 | `save_memory` | `key`, `value` | 保存到长期记忆 |

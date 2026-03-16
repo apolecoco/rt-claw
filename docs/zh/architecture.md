@@ -65,6 +65,7 @@ claw/*.c  --->  #include "osal/claw_os.h"
 和自有消息队列注册；网关将传入消息投递到所有匹配的消费者。
 消息类型：DATA、CMD、EVENT、SWARM、AI_REQ。
 队列容量：16 条消息 x 256 字节。专用线程优先级为 15。
+内置消息统计：通过 `gateway_get_stats()` 查询总计/按类型/丢弃/无消费者计数。
 
 ### 调度器（`claw/core/scheduler.c`）
 
@@ -75,8 +76,12 @@ claw/*.c  --->  #include "osal/claw_os.h"
 
 ### 心跳（`claw/core/heartbeat.c`）
 
-可选的周期性 AI 签到功能，每 5 分钟执行一次。向 AI 引擎发送心跳提示，
-使助手能够执行后台监控。依赖调度器服务进行计时。
+可选的周期性 AI 签到功能，每 5 分钟执行一次。三层 tick 逻辑：
+（1）有待处理事件——通过 `ai_chat_raw()` 进行 AI 总结；
+（2）无事件——设备健康检查（堆使用 > 80% 触发自动告警），
+随后进行轻量级 LLM 连通性探测（`ai_ping()`，max_tokens=1）；
+（3）状态变化（在线/离线）——通知投递到 IM 或控制台。
+依赖调度器服务进行计时。
 
 ### AI 引擎（`claw/services/ai/`）
 

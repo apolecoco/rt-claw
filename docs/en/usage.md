@@ -28,6 +28,7 @@ Commands start with `/`.
 | `/skill <name> [args]` | Execute skill |
 | `/nodes` | Show swarm nodes |
 | `/log [on\|off]` | Toggle log output |
+| `/log level <lvl>` | Set log level (error/warn/info/debug) |
 | `/history` | Show message count |
 | `/clear` | Clear conversation |
 | `/help` | List commands |
@@ -73,7 +74,7 @@ is always enabled).
 | Tool | Parameters | Description |
 |------|------------|-------------|
 | `system_info` | — | Show system information |
-| `memory_info` | — | Show heap usage |
+| `memory_info` | — | Show heap usage, largest block, fragmentation |
 | `clear_history` | — | Clear conversation history |
 | `system_restart` | — | Reboot the device |
 | `save_memory` | `key`, `value` | Save to long-term memory |

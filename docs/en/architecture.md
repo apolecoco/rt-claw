@@ -65,7 +65,8 @@ Message routing hub with service registry and type-based dispatch. Services
 register with a type_mask bitmap and their own message queue; the gateway
 delivers incoming messages to all matching consumers. Message types: DATA,
 CMD, EVENT, SWARM, AI_REQ. Queue: 16 messages x 256 bytes. Dedicated thread
-at priority 15.
+at priority 15. Built-in dispatch statistics track total/per-type/dropped/
+no-consumer message counts via `gateway_get_stats()`.
 
 ### Scheduler (`claw/core/scheduler.c`)
 
@@ -78,9 +79,12 @@ executed in turn, preventing task starvation.
 
 ### Heartbeat (`claw/core/heartbeat.c`)
 
-Optional periodic AI check-in every 5 minutes. Sends a heartbeat prompt
-to the AI engine so the assistant can perform background monitoring.
-Depends on the scheduler service for timing.
+Optional periodic AI check-in every 5 minutes. Three-layer tick logic:
+(1) events pending -- AI summary via `ai_chat_raw()`;
+(2) no events -- device health check (heap > 80% triggers auto-alert)
+    followed by lightweight LLM connectivity ping (`ai_ping()`,
+    max_tokens=1); (3) state change (online/offline) -- notification
+delivered to IM or console. Depends on the scheduler service for timing.
 
 ### AI Engine (`claw/services/ai/`)
 
