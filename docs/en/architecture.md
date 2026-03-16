@@ -45,6 +45,11 @@ Implementations:
 
 Network abstraction: `include/osal/claw_net.h` -- HTTP POST interface.
 
+KV storage abstraction: `include/osal/claw_kv.h` -- key-value persistence
+(str/blob/u8 set/get/delete). ESP-IDF backend uses NVS Flash; RT-Thread
+backend uses an in-memory hash table. All business code accesses persistent
+storage through this interface -- no direct NVS calls in `claw/`.
+
 Design: link-time binding. Zero overhead. No function pointers in core code.
 No conditional compilation (`#ifdef`) in `claw/` source files.
 
@@ -61,12 +66,13 @@ claw/*.c  --->  #include "osal/claw_os.h"
 
 ### Gateway (`claw/core/gateway.c`)
 
-Message routing hub with service registry and type-based dispatch. Services
-register with a type_mask bitmap and their own message queue; the gateway
-delivers incoming messages to all matching consumers. Message types: DATA,
-CMD, EVENT, SWARM, AI_REQ. Queue: 16 messages x 256 bytes. Dedicated thread
-at priority 15. Built-in dispatch statistics track total/per-type/dropped/
-no-consumer message counts via `gateway_get_stats()`.
+Message routing hub with pipeline handler chain and service registry.
+Incoming messages pass through registered handlers (netfilter-style hooks)
+before service dispatch. Handlers can pass (0), consume (1), or reject (<0)
+a message. Unconsumed messages are delivered to services matching the
+type_mask bitmap. Message types: DATA, CMD, EVENT, SWARM, AI_REQ.
+Queue: 16 messages x 256 bytes. Dedicated thread at priority 15.
+Built-in statistics: total/per-type/dropped/no-consumer/filtered counts.
 
 ### Scheduler (`claw/core/scheduler.c`)
 
@@ -92,7 +98,17 @@ Claude/OpenAI-compatible API HTTP client with Tool Use support. 24 built-in
 tools covering GPIO, system info, LCD, audio, scheduler, HTTP requests, and
 long-term memory. Each tool declares required capabilities (`SWARM_CAP_*`
 bitmap) and flags (`CLAW_TOOL_LOCAL_ONLY`) for swarm routing decisions.
-Conversation memory: RAM ring buffer (short-term) + NVS storage (long-term).
+
+Concurrency: multi-channel requests (shell, Feishu, Telegram, scheduler)
+are serialized through a request queue processed by a dedicated AI worker
+thread. Queue-full returns "busy" immediately without blocking other channels.
+Each request snapshots its channel, channel_hint, and status_cb to prevent
+cross-thread races.
+
+Conversation memory: per-channel RAM ring buffer (short-term) + OSAL KV
+storage (long-term persistent). When memory approaches capacity, AI-generated
+summary compression replaces the oldest half with a concise summary,
+preserving key context instead of simple FIFO deletion.
 Skill system for reusable prompt templates.
 
 ### Swarm (`claw/services/swarm/`)
@@ -192,10 +208,10 @@ Makefile (entry point)
 | Module | SRAM | Notes |
 |--------|------|-------|
 | ESP-IDF + WiFi + TLS | ~110 KB | System overhead |
-| Thread stacks (5 threads) | ~48 KB | main 16K + gateway 4K + swarm 4K + sched 8K + sched_ai 16K |
-| Gateway + Scheduler | ~10 KB | MQ 16x260B + service registry + timer |
-| AI Engine + Memory | ~15 KB | HTTP client + conversation ring buffer |
+| Thread stacks (6 threads) | ~56 KB | main 16K + gateway 4K + swarm 4K + sched 8K + sched_ai 16K + ai_worker 8K |
+| Gateway + Scheduler | ~10 KB | MQ 16x260B + service registry + pipeline handler table + timer |
+| AI Engine + Memory | ~15 KB | Request queue (4 slot) + conversation ring buffer + KV persistence |
 | Tools | ~5 KB | 24 tool descriptors (with caps/flags) + handlers |
 | Swarm + Heartbeat | ~14 KB | UDP socket + node table (32 nodes) + timer |
 | Shell + App | ~10 KB | Line buffer + command table |
-| **Total** | **~212 KB** | ~100 KB free heap at runtime (43% usage measured) |
+| **Total** | **~220 KB** | ~90 KB free heap at runtime |
