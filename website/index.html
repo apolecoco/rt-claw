@@ -10,6 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/js-md5@0.8.3/src/md5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <style>
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -886,6 +887,12 @@
                             <select id="flash-board"></select>
                         </div>
                         <div class="flash-field">
+                            <label data-en="Version" data-zh="版本">Version</label>
+                            <select id="flash-version">
+                                <option value="latest" data-en="latest (main)" data-zh="最新 (main)">latest (main)</option>
+                            </select>
+                        </div>
+                        <div class="flash-field">
                             <label data-en="Baud Rate" data-zh="波特率">Baud Rate</label>
                             <select id="flash-baudrate">
                                 <option value="921600" selected>921600</option>
@@ -1018,6 +1025,103 @@ window.updateBoardOptions = function() {
 };
 window.updateBoardOptions();
 
+/* Fetch available versions from GitHub Releases */
+const GITHUB_REPO = 'zevorn/rt-claw';
+var releaseCache = null;
+
+async function loadVersionOptions() {
+    var versionSelect = document.getElementById('flash-version');
+    try {
+        var resp = await fetch(
+            'https://api.github.com/repos/' + GITHUB_REPO + '/releases'
+        );
+        if (!resp.ok) return;
+        releaseCache = await resp.json();
+        releaseCache.forEach(function(rel) {
+            if (!rel.tag_name) return;
+            var opt = document.createElement('option');
+            opt.value = rel.tag_name;
+            opt.textContent = rel.tag_name + (rel.prerelease ? ' (pre)' : '');
+            versionSelect.appendChild(opt);
+        });
+    } catch (e) {
+        /* GitHub API rate-limited or unavailable — only main available */
+    }
+}
+loadVersionOptions();
+
+/*
+ * Resolve firmware files for a given platform/board/version.
+ * Returns { manifest, fileArray } ready for esptool-js.
+ *
+ * - "latest": fetch from GitHub Pages firmware/ directory
+ * - tag (e.g. "v0.2.0"): download zip from GitHub Release, extract with JSZip
+ */
+async function resolveFirmware(platform, board, version, terminal) {
+    var target = platform + '-' + board;
+
+    if (version === 'latest') {
+        /* GitHub Pages path (current main build) */
+        var base = 'firmware/' + target + '/';
+        terminal.writeLine('Source: latest (main branch)');
+        var mresp = await fetch(base + 'manifest.json');
+        if (!mresp.ok) throw new Error(
+            'Firmware not available for ' + target + '.\n' +
+            'CI may not have built it yet.\n' +
+            'Build locally: make build-' + target
+        );
+        var manifest = await mresp.json();
+        var build = manifest.builds[0];
+        var fileArray = [];
+        for (var i = 0; i < build.parts.length; i++) {
+            var part = build.parts[i];
+            terminal.writeLine('Downloading ' + part.path + '...');
+            var presp = await fetch(base + part.path);
+            if (!presp.ok) throw new Error('Failed to download ' + part.path);
+            var data = new Uint8Array(await presp.arrayBuffer());
+            var bstr = '';
+            for (var j = 0; j < data.length; j++) bstr += String.fromCharCode(data[j]);
+            fileArray.push({ data: bstr, address: part.offset });
+            terminal.writeLine('  ' + part.path + ': ' + data.length + ' bytes @ 0x' + part.offset.toString(16));
+        }
+        return fileArray;
+    }
+
+    /* Tag version: download zip from GitHub Release */
+    terminal.writeLine('Source: ' + version + ' (GitHub Release)');
+    var zipName = target + '-firmware.zip';
+    var zipUrl = 'https://github.com/' + GITHUB_REPO + '/releases/download/' + version + '/' + zipName;
+    terminal.writeLine('Downloading ' + zipName + '...');
+
+    var zresp = await fetch(zipUrl);
+    if (!zresp.ok) throw new Error(
+        'Firmware zip not found for ' + target + ' ' + version + '.\n' +
+        'URL: ' + zipUrl
+    );
+
+    var zipData = await zresp.arrayBuffer();
+    var zip = await JSZip.loadAsync(zipData);
+
+    var manifestFile = zip.file('manifest.json');
+    if (!manifestFile) throw new Error('manifest.json not found in zip');
+    var manifest = JSON.parse(await manifestFile.async('string'));
+    var build = manifest.builds[0];
+    var fileArray = [];
+
+    for (var k = 0; k < build.parts.length; k++) {
+        var part = build.parts[k];
+        var binFile = zip.file(part.path);
+        if (!binFile) throw new Error(part.path + ' not found in zip');
+        terminal.writeLine('Extracting ' + part.path + '...');
+        var binData = await binFile.async('uint8array');
+        var bstr = '';
+        for (var m = 0; m < binData.length; m++) bstr += String.fromCharCode(binData[m]);
+        fileArray.push({ data: bstr, address: part.offset });
+        terminal.writeLine('  ' + part.path + ': ' + binData.length + ' bytes @ 0x' + part.offset.toString(16));
+    }
+    return fileArray;
+}
+
 const flashBtn = document.getElementById('flash-btn');
 const flashEraseBtn = document.getElementById('flash-erase-btn');
 const flashLog = document.getElementById('flash-log');
@@ -1111,40 +1215,11 @@ window.flashFirmware = async function() {
             );
         }
 
-        /* 4. Fetch firmware manifest */
-        const firmwareBase = 'firmware/' + platform + '-' + board + '/';
+        /* 4-5. Download firmware (version-aware) */
+        const version = document.getElementById('flash-version').value;
         flashBtn.innerHTML = 'Downloading firmware...';
-        espTerminal.writeLine('Fetching firmware for ' + platform + '-' + board + '...');
-
-        let manifest;
-        try {
-            const resp = await fetch(firmwareBase + 'manifest.json');
-            if (!resp.ok) throw new Error('HTTP ' + resp.status);
-            manifest = await resp.json();
-        } catch (e) {
-            throw new Error(
-                'Firmware not available for ' + platform + '-' + board + '.\n' +
-                'CI may not have built it yet.\n' +
-                'Build locally: make build-' + platform + '-' + board
-            );
-        }
-
-        /* 5. Download firmware parts */
-        const build = manifest.builds[0];
-        const fileArray = [];
-        for (const part of build.parts) {
-            espTerminal.writeLine('Downloading ' + part.path + '...');
-            const partResp = await fetch(firmwareBase + part.path);
-            if (!partResp.ok) throw new Error('Failed to download ' + part.path);
-            const data = new Uint8Array(await partResp.arrayBuffer());
-            /* esptool-js internally uses binary strings (bstr); convert */
-            var bstr = '';
-            for (var j = 0; j < data.length; j++) {
-                bstr += String.fromCharCode(data[j]);
-            }
-            fileArray.push({ data: bstr, address: part.offset });
-            espTerminal.writeLine('  ' + part.path + ': ' + data.length + ' bytes @ 0x' + part.offset.toString(16));
-        }
+        espTerminal.writeLine('Fetching firmware for ' + platform + '-' + board + ' (' + version + ')...');
+        const fileArray = await resolveFirmware(platform, board, version, espTerminal);
 
         /* 6. Flash */
         flashBtn.innerHTML = 'Flashing...';

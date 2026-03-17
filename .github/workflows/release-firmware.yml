@@ -1,0 +1,126 @@
+name: Release Firmware
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: esp32c3-devkit
+            make_target: build-esp32c3-devkit
+            build_dir: build/esp32c3-devkit/idf
+            esp_targets: esp32c3
+            chip_family: ESP32-C3
+          - target: esp32c3-xiaozhi-xmini
+            make_target: build-esp32c3-xiaozhi-xmini
+            build_dir: build/esp32c3-xiaozhi-xmini/idf
+            esp_targets: esp32c3
+            chip_family: ESP32-C3
+          - target: esp32s3-default
+            make_target: esp32s3
+            build_dir: build/esp32s3-default/idf
+            esp_targets: esp32s3
+            chip_family: ESP32-S3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install system dependencies
+        run: scripts/ci/install-system-deps.sh build
+
+      - name: Cache ESP-IDF source
+        uses: actions/cache@v4
+        with:
+          path: ~/esp/esp-idf
+          key: esp-idf-src-v5.4-${{ runner.os }}
+
+      - name: Cache ESP-IDF tools
+        uses: actions/cache@v4
+        with:
+          path: ~/.espressif
+          key: esp-idf-tools-v5.4-${{ matrix.esp_targets }}-${{ runner.os }}
+
+      - name: Ensure ESP-IDF environment
+        run: scripts/ci/setup-esp-idf.sh "${{ matrix.esp_targets }}" none
+
+      - name: Build firmware
+        run: |
+          source ~/esp/esp-idf/export.sh
+          make ${{ matrix.make_target }}
+
+      - name: Package firmware
+        run: |
+          RTCLAW_FIRMWARE_VERSION="${GITHUB_REF_NAME}" \
+            scripts/ci/package-esp-firmware.sh \
+            "${{ matrix.build_dir }}" "${{ matrix.chip_family }}" firmware-out "RT-Claw"
+
+      - name: Create release zip and OTA binary
+        run: |
+          cd firmware-out
+          zip -r "../${{ matrix.target }}-firmware.zip" .
+          # Copy app binary for direct OTA download
+          if [ -f rt-claw.bin ]; then
+            cp rt-claw.bin "../${{ matrix.target }}-rt-claw.bin"
+          elif [ -f firmware.bin ]; then
+            cp firmware.bin "../${{ matrix.target }}-rt-claw.bin"
+          fi
+          cd ..
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.target }}
+          path: |
+            ${{ matrix.target }}-firmware.zip
+            ${{ matrix.target }}-rt-claw.bin
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Generate OTA version.json files
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          version="${tag#v}"
+          for bin in release-assets/*-rt-claw.bin; do
+            target="$(basename "$bin" -rt-claw.bin)"
+            size=$(stat -c%s "$bin")
+            sha256=$(sha256sum "$bin" | cut -d' ' -f1)
+            url="https://github.com/${{ github.repository }}/releases/download/${tag}/${target}-rt-claw.bin"
+            cat > "release-assets/${target}-ota-version.json" <<EOF
+          {
+              "version": "${version}",
+              "url": "${url}",
+              "size": ${size},
+              "sha256": "${sha256}"
+          }
+          EOF
+          done
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          version="${tag#v}"
+          gh release create "$tag" \
+            --title "RT-Claw ${tag}" \
+            --generate-notes \
+            release-assets/*
