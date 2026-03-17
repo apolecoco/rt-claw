@@ -90,10 +90,34 @@ def _resolve_vexpress_a9() -> PlatformConfig:
     )
 
 
+
+def _resolve_zynq_a9() -> PlatformConfig:
+    kernel = os.path.join(
+        BUILD_DIR, "zynq-a9-qemu", "platform", "zynq-a9", "rtclaw.elf"
+    )
+    return PlatformConfig(
+        name="zynq-a9-qemu",
+        qemu_bin=resolve_qemu_binary("zynq-a9"),
+        flash_path=kernel,
+        boot_marker="Zynq-A9 QEMU",
+        shell_prompt="",
+        boot_timeout=30,
+        shell_timeout=15,
+        has_shell=False,
+        qemu_args=[
+            "-M", "xilinx-zynq-a9",
+            "-smp", "1",
+            "-nographic",
+            "-nic", "user,model=cadence_gem",
+        ],
+    )
+
+
 _PLATFORM_MAP = {
     "esp32c3-qemu": _resolve_esp32c3,
     "esp32s3-qemu": _resolve_esp32s3,
     "vexpress-a9-qemu": _resolve_vexpress_a9,
+    "zynq-a9-qemu": _resolve_zynq_a9,
 }
 
 
@@ -125,6 +149,7 @@ def resolve_qemu_binary(arch: str) -> str:
         "esp32c3": "qemu-system-riscv32",
         "esp32s3": "qemu-system-xtensa",
         "vexpress-a9": "qemu-system-arm",
+        "zynq-a9": "qemu-system-arm",
     }
     binary = bin_map.get(arch)
     if binary is None:
@@ -172,5 +197,8 @@ def build_qemu_command(config: PlatformConfig,
         cmd += ["-kernel", flash_path]
         if sd_path:
             cmd += ["-sd", sd_path]
+
+    elif config.name.startswith("zynq"):
+        cmd += ["-kernel", flash_path]
 
     return cmd

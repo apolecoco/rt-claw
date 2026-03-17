@@ -96,3 +96,38 @@ rtclaw_elf = executable('rtclaw',
     ],
     name_suffix: 'elf',
 )
+
+# ---- Unit test ELF ----
+
+test_src = files(
+    'startup.S',
+    'FreeRTOS_asm_vectors.S',
+    'test_main.c',
+    'syscalls.c',
+)
+
+test_incs = include_directories(
+    '../..',
+)
+
+rtclaw_test_elf = executable('rtclaw_test',
+    test_src,
+    include_directories: [
+        freertos_incs,
+        bsp_incs,
+        claw_inc,
+        claw_root_inc,
+        test_incs,
+    ],
+    c_args: platform_defs + ['-DCLAW_PLATFORM_FREERTOS'],
+    link_with: [unittest_lib, rtclaw_lib, osal_lib, cjson_lib,
+                bsp_lib, freertos_lib],
+    link_args: [
+        '-T', platform_dir / 'link.ld',
+        '-Wl,--gc-sections',
+        '-nostartfiles',
+        '-Xlinker', '--defsym=_HEAP_SIZE=0x80000',
+        '-Xlinker', '--defsym=_STACK_SIZE=0x4000',
+    ],
+    name_suffix: 'elf',
+)

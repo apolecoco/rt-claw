@@ -41,7 +41,7 @@ int main(void)
 {
     init_platform();
 
-    printf("rt-claw: Zynq-A9 QEMU (FreeRTOS)\n");
+    printf("rt-claw: Zynq-A9 QEMU (FreeRTOS) - Real-Time Claw\n");
 
     xTaskCreate(claw_main_task,
                 "claw_main",

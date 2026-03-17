@@ -34,12 +34,17 @@ help:
 	@echo "  make vexpress-a9-qemu           Build QEMU vexpress-a9"
 	@echo "  make run-vexpress-a9-qemu       Build + launch vexpress-a9"
 	@echo ""
+	@echo "Zynq-A9 (FreeRTOS):"
+	@echo "  make build-zynq-a9-qemu         Build QEMU Zynq-A9"
+	@echo "  make run-zynq-a9-qemu           Build + launch Zynq-A9"
+	@echo ""
 	@echo "Options:"
 	@echo "  GDB=1       Debug mode (GDB port 1234)"
 	@echo "  GRAPHICS=1  LCD display window (QEMU only)"
 	@echo ""
 	@echo "Tests (unit — cross-compiled, QEMU semihosting):"
 	@echo "  make test-unit             Build + run unit tests (vexpress-a9)"
+	@echo "  make test-unit-zynq        Build + run unit tests (zynq-a9)"
 	@echo ""
 	@echo "Tests (functional — requires pre-built firmware):"
 	@echo "  make test-functional       Run all functional tests"
@@ -52,6 +57,7 @@ help:
 	@echo "  make test-smoke-esp32c3    Smoke tests (ESP32-C3)"
 	@echo "  make test-smoke-esp32s3    Smoke tests (ESP32-S3)"
 	@echo "  make test-smoke-vexpress   Smoke tests (vexpress-a9)"
+	@echo "  make test-smoke-zynq       Smoke tests (zynq-a9)"
 	@echo "  make test-online-esp32c3   AI online tests (ESP32-C3)"
 	@echo "  make test-online-esp32s3   AI online tests (ESP32-S3)"
 	@echo ""
@@ -124,6 +130,16 @@ run-zynq-a9-qemu: build-zynq-a9-qemu
 		-kernel $(MESON_BUILDDIR_ZYNQ)/platform/zynq-a9/rtclaw.elf \
 		-nic user,model=cadence_gem \
 		$(if $(filter 1,$(GDB)),-S -s)
+
+
+.PHONY: test-unit-zynq
+test-unit-zynq:
+	python3 tests/unit/run_zynq.py
+
+.PHONY: test-smoke-zynq
+test-smoke-zynq: build-zynq-a9-qemu
+	RTCLAW_TEST_PLATFORM=zynq-a9-qemu python3 -m unittest discover \
+		-s tests/functional -p 'test_boot.py' -v
 
 # --- ESP32-C3 unified targets ---
 # Prerequisite: source $$HOME/esp/esp-idf/export.sh
