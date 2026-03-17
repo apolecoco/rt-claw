@@ -27,20 +27,30 @@ debugging tools — no software installation required.
 
 Board options update automatically when you change the platform.
 
-**2. Select Baud Rate**
+**2. Select Version**
+
+| Option | Source | Description |
+|--------|--------|-------------|
+| latest (main) | GitHub Pages | Most recent CI build from main branch |
+| v0.2.0, v0.1.0, ... | GitHub Release | Tagged release (requires Release with firmware assets) |
+
+Tags without a GitHub Release show as disabled with "(no firmware)".
+
+**3. Select Baud Rate**
 
 Default is 921600 (fastest). Lower to 460800 or 115200 if flashing is
 unstable.
 
-**3. Click "Install RT-Claw"**
+**4. Click "Install RT-Claw"**
 
 The browser opens a serial port picker. Select the matching COM port or
 `/dev/ttyUSB*`.
 
-**4. Wait for Completion**
+**5. Wait for Completion**
 
-The page shows a progress bar and log. The device reboots automatically
-after flashing.
+Flashing output appears directly in the Serial Monitor panel on the right.
+During flashing, all serial controls are disabled (except the expand button)
+to prevent conflicts. The device reboots automatically after flashing.
 
 ### Erase Flash
 

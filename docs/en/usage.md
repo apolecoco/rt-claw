@@ -31,9 +31,14 @@ Commands start with `/`.
 | `/log level <lvl>` | Set log level (error/warn/info/debug) |
 | `/history` | Show message count |
 | `/clear` | Clear conversation |
+| `/ota check` | Check for firmware update |
+| `/ota update [url]` | Install update (or direct URL) |
+| `/ota rollback` | Roll back to previous firmware |
+| `/ota version` | Show running firmware version |
 | `/help` | List commands |
 
 > WiFi commands (`/wifi_*`) only available on WiFi-capable boards.
+> OTA commands (`/ota`) only available on boards with OTA partitions (xiaozhi-xmini, ESP32-S3 default).
 
 ## Tool Use
 
@@ -94,6 +99,99 @@ is always enabled).
 | Tool | Parameters | Description |
 |------|------------|-------------|
 | `http_request` | `url`, `method` (GET / POST), `headers` (optional JSON), `body` (optional) | Send HTTP request |
+
+### OTA Tools (CONFIG_RTCLAW_OTA_ENABLE)
+
+| Tool | Parameters | Description |
+|------|------------|-------------|
+| `ota_check` | — | Check if a firmware update is available |
+| `ota_update` | `url` (optional) | Trigger OTA update (from server or direct URL) |
+| `ota_version` | — | Get running firmware version |
+| `ota_rollback` | — | Roll back to previous firmware and reboot |
+
+## OTA (Over-The-Air Update)
+
+Firmware can be updated over the network without a USB cable. Only boards with
+A/B OTA partitions are supported: **xiaozhi-xmini** (ESP32-C3, 16 MB) and
+**ESP32-S3 default** (16 MB).
+
+### How It Works
+
+1. Device sends HTTP GET to a version-check URL
+2. Server returns a JSON with the new version, download URL, size, and SHA256
+3. Device compares versions — if newer, downloads the binary and writes it to
+   the inactive OTA partition
+4. Device switches boot partition and reboots
+5. If the new firmware fails to boot, the bootloader automatically rolls back
+
+### Configuration
+
+```bash
+# Set the OTA version-check URL (pick one method)
+meson configure build/<platform>/meson -Dota_url='http://server/version.json'
+export RTCLAW_OTA_URL='http://server/version.json'
+
+# Optional: auto-check every 5 minutes
+meson configure build/<platform>/meson -Dota_check_interval_ms=300000
+```
+
+### Version JSON Format
+
+The OTA server must serve a JSON file at the configured URL:
+
+```json
+{
+    "version": "0.2.0",
+    "url": "http://server/rt-claw.bin",
+    "size": 524288,
+    "sha256": "abcdef1234567890..."
+}
+```
+
+### Local OTA Server
+
+A development server script is included:
+
+```bash
+make build-esp32c3-xiaozhi-xmini   # build firmware first
+make ota-server                     # start local OTA server
+
+# Or with options:
+scripts/ota-server.py --platform esp32s3 --board default --port 9000
+```
+
+The script auto-detects the build firmware, reads the version from
+`claw_config.h`, computes SHA256, and prints device configuration
+instructions.
+
+### Triggering OTA
+
+**Shell:**
+
+```
+/ota check                          # check for update
+/ota update                         # check + install
+/ota update http://host/fw.bin      # direct URL install
+/ota rollback                       # revert to previous firmware
+```
+
+**AI conversation:**
+
+```
+You> Check if there's a firmware update
+rt-claw> (calls ota_check) Update available: 0.1.0 → 0.2.0
+You> Go ahead and update
+rt-claw> (calls ota_update) OTA started, rebooting when done...
+```
+
+### GitHub Releases
+
+When a version tag is pushed (`v*`), CI automatically builds all hardware
+firmware and creates a GitHub Release with:
+
+- `<target>-firmware.zip` — full flash package (bootloader + partition table + app)
+- `<target>-rt-claw.bin` — app binary for OTA
+- `<target>-ota-version.json` — version metadata with download URL and SHA256
 
 ## Skill System
 

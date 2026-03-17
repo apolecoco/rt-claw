@@ -31,9 +31,14 @@
 | `/log level <lvl>` | 设置日志级别（error/warn/info/debug） |
 | `/history` | 显示消息数量 |
 | `/clear` | 清空对话 |
+| `/ota check` | 检查固件更新 |
+| `/ota update [url]` | 安装更新（或直接 URL） |
+| `/ota rollback` | 回滚到上一版本固件 |
+| `/ota version` | 显示当前固件版本 |
 | `/help` | 列出命令 |
 
 > WiFi 命令（`/wifi_*`）仅在支持 WiFi 的开发板上可用。
+> OTA 命令（`/ota`）仅在有 OTA 分区的开发板上可用（xiaozhi-xmini、ESP32-S3 default）。
 
 ## Tool Use
 
@@ -93,6 +98,95 @@ Kconfig 选项控制（Audio 除外，始终启用）。
 | 工具 | 参数 | 说明 |
 |------|------|------|
 | `http_request` | `url`, `method` (GET / POST), `headers` (可选 JSON), `body` (可选) | 发送 HTTP 请求 |
+
+### OTA 工具 (CONFIG_RTCLAW_OTA_ENABLE)
+
+| 工具 | 参数 | 说明 |
+|------|------|------|
+| `ota_check` | — | 检查是否有固件更新 |
+| `ota_update` | `url`（可选） | 触发 OTA 更新（从服务器或直接 URL） |
+| `ota_version` | — | 获取当前运行的固件版本 |
+| `ota_rollback` | — | 回滚到上一版本固件并重启 |
+
+## OTA（空中升级）
+
+可通过网络更新固件，无需 USB 线。仅支持带 A/B OTA 分区的开发板：
+**xiaozhi-xmini**（ESP32-C3，16 MB）和 **ESP32-S3 default**（16 MB）。
+
+### 工作原理
+
+1. 设备向版本检查 URL 发送 HTTP GET 请求
+2. 服务器返回 JSON，包含新版本号、下载 URL、大小和 SHA256
+3. 设备比较版本号 — 如有更新，下载固件并写入非活动 OTA 分区
+4. 设备切换启动分区并重启
+5. 如果新固件启动失败，Bootloader 自动回滚
+
+### 配置
+
+```bash
+# 设置 OTA 版本检查 URL（任选一种方式）
+meson configure build/<platform>/meson -Dota_url='http://server/version.json'
+export RTCLAW_OTA_URL='http://server/version.json'
+
+# 可选：每 5 分钟自动检查一次
+meson configure build/<platform>/meson -Dota_check_interval_ms=300000
+```
+
+### 版本 JSON 格式
+
+OTA 服务器需在配置的 URL 提供以下格式的 JSON：
+
+```json
+{
+    "version": "0.2.0",
+    "url": "http://server/rt-claw.bin",
+    "size": 524288,
+    "sha256": "abcdef1234567890..."
+}
+```
+
+### 本地 OTA 服务器
+
+项目自带开发用 OTA 服务器脚本：
+
+```bash
+make build-esp32c3-xiaozhi-xmini   # 先编译固件
+make ota-server                     # 启动本地 OTA 服务器
+
+# 或指定参数：
+scripts/ota-server.py --platform esp32s3 --board default --port 9000
+```
+
+脚本会自动检测编译产物、从 `claw_config.h` 读取版本号、计算 SHA256，
+并输出设备端配置说明。
+
+### 触发 OTA
+
+**Shell 命令：**
+
+```
+/ota check                          # 检查更新
+/ota update                         # 检查并安装
+/ota update http://host/fw.bin      # 直接 URL 安装
+/ota rollback                       # 回滚到上一版本
+```
+
+**AI 对话：**
+
+```
+You> 帮我检查有没有固件更新
+rt-claw> (调用 ota_check) 有更新: 0.1.0 → 0.2.0
+You> 升级吧
+rt-claw> (调用 ota_update) OTA 更新已启动，完成后自动重启...
+```
+
+### GitHub Releases
+
+当推送版本标签（`v*`）时，CI 自动构建所有硬件固件并创建 GitHub Release，包含：
+
+- `<target>-firmware.zip` — 完整刷写包（bootloader + 分区表 + 应用）
+- `<target>-rt-claw.bin` — 应用二进制（OTA 用）
+- `<target>-ota-version.json` — 版本元数据（含下载 URL 和 SHA256）
 
 ## 技能系统
 
