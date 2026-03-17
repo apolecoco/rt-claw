@@ -17,12 +17,6 @@ if(CONFIG_ESP_WIFI_ENABLED)
     list(APPEND MAIN_REQUIRES esp_wifi esp_netif nvs_flash)
 endif()
 
-if(CONFIG_RTCLAW_OTA_ENABLE)
-    list(APPEND MAIN_SRCS
-        "${PROJECT_ROOT}/platform/common/espressif/esp_ota.c")
-    list(APPEND MAIN_REQUIRES app_update esp_http_client esp-tls)
-endif()
-
 idf_component_register(
     SRCS ${MAIN_SRCS}
     INCLUDE_DIRS ${MAIN_INCLUDES}

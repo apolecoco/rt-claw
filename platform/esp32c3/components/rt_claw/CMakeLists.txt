@@ -30,9 +30,16 @@ list(APPEND CLAW_REQUIRES esp_eth esp_wifi esp_lcd esp_driver_i2c
 
 # Stub source so the component produces a real static library
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/rt_claw_stub.c" "/* auto-generated */\n")
+set(CLAW_SRCS "${CMAKE_CURRENT_BINARY_DIR}/rt_claw_stub.c")
+
+# Platform OTA implementation — must live in rt_claw (not main) so the
+# linker resolves symbols referenced by Meson-compiled ota_service.o.
+if(CONFIG_RTCLAW_OTA_ENABLE)
+    list(APPEND CLAW_SRCS "${RT_CLAW_ROOT}/platform/common/espressif/esp_ota.c")
+endif()
 
 idf_component_register(
-    SRCS "${CMAKE_CURRENT_BINARY_DIR}/rt_claw_stub.c"
+    SRCS ${CLAW_SRCS}
     INCLUDE_DIRS    ${CLAW_INC_DIRS}
     REQUIRES        ${CLAW_REQUIRES}
 )
