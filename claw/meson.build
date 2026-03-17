@@ -61,6 +61,16 @@ endif
 if get_option('telegram')
     feature_defs += '-DCONFIG_RTCLAW_TELEGRAM_ENABLE'
 endif
+if get_option('ota')
+    feature_defs += '-DCONFIG_RTCLAW_OTA_ENABLE'
+endif
+# OTA sources always compiled; #ifdef CONFIG_RTCLAW_OTA_ENABLE inside
+# controls whether code is active.  On ESP-IDF the flag comes from
+# Kconfig (sdkconfig → cross.ini), on RT-Thread from Meson -Dota=true.
+src_files += files(
+    'services/ota/ota_service.c',
+    'tools/tool_ota.c',
+)
 
 rtclaw_lib = static_library('rtclaw', src_files,
     include_directories: [claw_root_inc, claw_inc] + platform_incs,

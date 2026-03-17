@@ -64,6 +64,7 @@ _str_overrides = {
     'feishu_app_secret':['RTCLAW_FEISHU_APP_SECRET','CONFIG_RTCLAW_FEISHU_APP_SECRET'],
     'telegram_bot_token':['RTCLAW_TELEGRAM_BOT_TOKEN','CONFIG_RTCLAW_TELEGRAM_BOT_TOKEN'],
     'telegram_api_url':  ['RTCLAW_TELEGRAM_API_URL',  'CONFIG_RTCLAW_TELEGRAM_API_URL'],
+    'ota_url':           ['RTCLAW_OTA_URL',           'CONFIG_RTCLAW_OTA_URL'],
 }
 
 # Integer config: [meson_option, env_var_name, config_macro_name]
@@ -71,6 +72,7 @@ _int_overrides = {
     'ai_max_tokens':      ['RTCLAW_AI_MAX_TOKENS',      'CONFIG_RTCLAW_AI_MAX_TOKENS'],
     'ai_context_size':    ['RTCLAW_AI_CONTEXT_SIZE',     'CONFIG_RTCLAW_AI_CONTEXT_SIZE'],
     'ai_memory_max_msgs': ['RTCLAW_AI_MEMORY_MAX_MSGS',  'CONFIG_RTCLAW_AI_MEMORY_MAX_MSGS'],
+    'ota_check_interval_ms': ['RTCLAW_OTA_CHECK_INTERVAL_MS', 'CONFIG_RTCLAW_OTA_CHECK_INTERVAL_MS'],
 }
 
 conf_data = configuration_data()

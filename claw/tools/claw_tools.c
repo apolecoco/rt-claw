@@ -48,6 +48,9 @@ int claw_tools_init(void)
 #ifdef CONFIG_RTCLAW_SKILL_ENABLE
     claw_tools_register_skill();
 #endif
+#ifdef CONFIG_RTCLAW_OTA_ENABLE
+    claw_tools_register_ota();
+#endif
 
     /* Audio tools (always register — stubs on non-ESP-IDF) */
 #ifdef CONFIG_RTCLAW_AUDIO_ENABLE

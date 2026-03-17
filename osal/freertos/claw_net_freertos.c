@@ -86,3 +86,48 @@ int claw_net_post(const char *url,
     }
     return status;
 }
+
+int claw_net_get(const char *url,
+                 const claw_net_header_t *headers, int header_count,
+                 char *resp, size_t resp_size, size_t *resp_len)
+{
+    resp_ctx_t ctx = { .buf = resp, .size = resp_size, .len = 0 };
+    resp[0] = '\0';
+
+    esp_http_client_config_t cfg = {
+        .url = url,
+        .method = HTTP_METHOD_GET,
+        .timeout_ms = HTTP_TIMEOUT_MS,
+        .event_handler = on_http_event,
+        .user_data = &ctx,
+        .crt_bundle_attach = esp_crt_bundle_attach,
+        .buffer_size = 2048,
+    };
+
+    esp_http_client_handle_t client = esp_http_client_init(&cfg);
+    if (!client) {
+        return CLAW_ERROR;
+    }
+
+    for (int i = 0; i < header_count; i++) {
+        esp_http_client_set_header(client, headers[i].key,
+                                   headers[i].value);
+    }
+
+    esp_err_t err = esp_http_client_perform(client);
+    int status = 0;
+    if (err == ESP_OK) {
+        status = esp_http_client_get_status_code(client);
+    }
+    esp_http_client_cleanup(client);
+
+    if (err != ESP_OK) {
+        CLAW_LOGE(TAG, "HTTP GET failed: %s", esp_err_to_name(err));
+        return CLAW_ERROR;
+    }
+
+    if (resp_len) {
+        *resp_len = ctx.len;
+    }
+    return status;
+}

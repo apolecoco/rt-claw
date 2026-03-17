@@ -72,6 +72,13 @@ menu "rt-claw Configuration"
             help
                 Predefined prompt templates (draw, monitor, greet).
 
+        config RTCLAW_OTA_ENABLE
+            bool "Enable OTA firmware update"
+            default n
+            help
+                Over-the-air firmware update via HTTP(S).
+                Requires OTA partition table (ota_0 + ota_1).
+
         menu "Tool Use"
 
             config RTCLAW_TOOL_GPIO

@@ -127,6 +127,11 @@ int sched_tool_remove_by_name(const char *name);
 void claw_tools_register_net(void);
 
 /**
+ * Register OTA tools (ota_check, ota_update, ota_version, ota_rollback).
+ */
+void claw_tools_register_ota(void);
+
+/**
  * Initialize LCD panel (QEMU RGB framebuffer).
  * Call before claw_tools_init() so the panel is ready.
  */

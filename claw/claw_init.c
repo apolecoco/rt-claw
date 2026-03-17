@@ -32,6 +32,9 @@
 #ifdef CONFIG_RTCLAW_TELEGRAM_ENABLE
 #include "claw/services/im/telegram.h"
 #endif
+#ifdef CONFIG_RTCLAW_OTA_ENABLE
+#include "claw/services/ota/ota_service.h"
+#endif
 
 #define TAG "init"
 
@@ -65,6 +68,9 @@ static const claw_service_t s_services[] = {
 #endif
 #ifdef CONFIG_RTCLAW_TELEGRAM_ENABLE
     { "telegram",    telegram_init,     telegram_start, NULL },
+#endif
+#ifdef CONFIG_RTCLAW_OTA_ENABLE
+    { "ota",         ota_service_init,  ota_service_start, NULL },
 #endif
 };
 

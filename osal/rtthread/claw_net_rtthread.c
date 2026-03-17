@@ -225,3 +225,91 @@ int claw_net_post(const char *url,
     }
     return status;
 }
+
+int claw_net_get(const char *url,
+                 const claw_net_header_t *headers, int header_count,
+                 char *resp, size_t resp_size, size_t *resp_len)
+{
+    char host[128];
+    char path[256];
+    int port;
+
+    resp[0] = '\0';
+    if (resp_len) {
+        *resp_len = 0;
+    }
+
+    if (parse_url(url, host, sizeof(host),
+                  &port, path, sizeof(path)) < 0) {
+        CLAW_LOGE(TAG, "invalid URL: %s", url);
+        return CLAW_ERROR;
+    }
+
+    if (port == 443) {
+        CLAW_LOGW(TAG, "HTTPS not supported, trying plain HTTP on 443");
+    }
+
+    struct hostent *he = gethostbyname(host);
+    if (!he) {
+        CLAW_LOGE(TAG, "DNS failed: %s", host);
+        return CLAW_ERROR;
+    }
+
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock < 0) {
+        CLAW_LOGE(TAG, "socket create failed");
+        return CLAW_ERROR;
+    }
+
+    struct timeval tv = { .tv_sec = HTTP_TIMEOUT_SEC, .tv_usec = 0 };
+    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+
+    struct sockaddr_in server;
+    memset(&server, 0, sizeof(server));
+    server.sin_family = AF_INET;
+    server.sin_port = htons(port);
+    memcpy(&server.sin_addr, he->h_addr, he->h_length);
+
+    if (connect(sock, (struct sockaddr *)&server, sizeof(server)) < 0) {
+        CLAW_LOGE(TAG, "connect failed: %s:%d", host, port);
+        close(sock);
+        return CLAW_ERROR;
+    }
+
+    /* Build HTTP GET request */
+    char hdr[512];
+    int hdr_len = snprintf(hdr, sizeof(hdr),
+        "GET %s HTTP/1.1\r\n"
+        "Host: %s\r\n"
+        "Connection: close\r\n",
+        path, host);
+
+    for (int i = 0; i < header_count; i++) {
+        hdr_len += snprintf(hdr + hdr_len, sizeof(hdr) - hdr_len,
+                            "%s: %s\r\n",
+                            headers[i].key, headers[i].value);
+    }
+    hdr_len += snprintf(hdr + hdr_len, sizeof(hdr) - hdr_len, "\r\n");
+
+    if (send(sock, hdr, hdr_len, 0) < 0) {
+        CLAW_LOGE(TAG, "send failed");
+        close(sock);
+        return CLAW_ERROR;
+    }
+
+    int status = 0;
+    size_t rlen = 0;
+    int rc = http_recv_response(sock, resp, resp_size, &rlen, &status);
+    close(sock);
+
+    if (rc < 0) {
+        CLAW_LOGE(TAG, "response parse failed");
+        return CLAW_ERROR;
+    }
+
+    if (resp_len) {
+        *resp_len = rlen;
+    }
+    return status;
+}

@@ -39,6 +39,23 @@ int claw_net_post(const char *url,
                   const char *body, size_t body_len,
                   char *resp, size_t resp_size, size_t *resp_len);
 
+/*
+ * Perform an HTTP GET request.
+ *
+ * @param url          Full URL (http:// or https://)
+ * @param headers      Custom request headers (may be NULL if count is 0)
+ * @param header_count Number of entries in headers[]
+ * @param resp         Buffer for response body (NUL-terminated on return)
+ * @param resp_size    Size of resp buffer
+ * @param resp_len     Actual response body length (may be NULL)
+ *
+ * @return HTTP status code (>0) on success,
+ *         or negative CLAW_ERROR on transport failure.
+ */
+int claw_net_get(const char *url,
+                 const claw_net_header_t *headers, int header_count,
+                 char *resp, size_t resp_size, size_t *resp_len);
+
 #ifdef __cplusplus
 }
 #endif

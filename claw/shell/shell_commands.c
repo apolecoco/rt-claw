@@ -25,6 +25,9 @@
 #ifdef CONFIG_RTCLAW_SWARM_ENABLE
 #include "claw/services/swarm/swarm.h"
 #endif
+#ifdef CONFIG_RTCLAW_OTA_ENABLE
+#include "claw/services/ota/ota_service.h"
+#endif
 
 #include "osal/claw_kv.h"
 
@@ -312,6 +315,63 @@ static void cmd_nodes(int argc, char **argv)
 }
 #endif
 
+#ifdef CONFIG_RTCLAW_OTA_ENABLE
+static void cmd_ota(int argc, char **argv)
+{
+    if (argc < 2) {
+        printf("Usage: /ota check | update [url]\n");
+        return;
+    }
+
+    if (strcmp(argv[1], "check") == 0) {
+        claw_ota_info_t info;
+        int ret = ota_check_update(&info);
+        if (ret == 1) {
+            printf("Update available: %s\n", info.version);
+            printf("  URL:  %s\n", info.url);
+            printf("  Size: %lu bytes\n", (unsigned long)info.size);
+            printf("Run '/ota update' to install.\n");
+        } else if (ret == 0) {
+            printf("Firmware is up to date (%s).\n",
+                   claw_ota_running_version());
+        } else {
+            printf("[error] version check failed\n");
+        }
+    } else if (strcmp(argv[1], "update") == 0) {
+        if (argc >= 3) {
+            /* Direct URL provided */
+            if (ota_trigger_update(argv[2]) == CLAW_OK) {
+                printf("OTA update started from: %s\n", argv[2]);
+            } else {
+                printf("[error] failed to start OTA\n");
+            }
+        } else {
+            /* Check server then update */
+            claw_ota_info_t info;
+            int ret = ota_check_update(&info);
+            if (ret == 1) {
+                printf("Updating to %s ...\n", info.version);
+                if (ota_trigger_update(info.url) != CLAW_OK) {
+                    printf("[error] failed to start OTA\n");
+                }
+            } else if (ret == 0) {
+                printf("Already up to date (%s).\n",
+                       claw_ota_running_version());
+            } else {
+                printf("[error] version check failed\n");
+            }
+        }
+    } else if (strcmp(argv[1], "rollback") == 0) {
+        printf("Rolling back firmware ...\n");
+        claw_ota_rollback();
+    } else if (strcmp(argv[1], "version") == 0) {
+        printf("Running: %s\n", claw_ota_running_version());
+    } else {
+        printf("Usage: /ota check|update [url]|rollback|version\n");
+    }
+}
+#endif
+
 /* ---- Common command table ---- */
 
 const shell_cmd_t shell_common_commands[] = {
@@ -333,6 +393,9 @@ const shell_cmd_t shell_common_commands[] = {
 #endif
 #ifdef CONFIG_RTCLAW_SWARM_ENABLE
     SHELL_CMD("/nodes",         cmd_nodes,         "Show swarm node table"),
+#endif
+#ifdef CONFIG_RTCLAW_OTA_ENABLE
+    SHELL_CMD("/ota",           cmd_ota,           "OTA update management"),
 #endif
 };
 

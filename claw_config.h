@@ -105,4 +105,14 @@
 #define CONFIG_RTCLAW_TELEGRAM_API_URL   "https://api.telegram.org"
 #endif
 
+/* ---- OTA (Over-The-Air update) ---- */
+#define CLAW_OTA_THREAD_STACK       8192
+#define CLAW_OTA_THREAD_PRIO        10
+#ifndef CONFIG_RTCLAW_OTA_URL
+#define CONFIG_RTCLAW_OTA_URL       ""
+#endif
+#ifndef CONFIG_RTCLAW_OTA_CHECK_INTERVAL_MS
+#define CONFIG_RTCLAW_OTA_CHECK_INTERVAL_MS  0   /* 0 = manual only */
+#endif
+
 #endif /* CLAW_CONFIG_H */

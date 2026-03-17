@@ -56,3 +56,11 @@ option('telegram_bot_token', type: 'string', value: '',
     description: 'Telegram Bot token (env: RTCLAW_TELEGRAM_BOT_TOKEN)')
 option('telegram_api_url', type: 'string', value: '',
     description: 'Telegram API base URL (env: RTCLAW_TELEGRAM_API_URL)')
+
+# OTA (Over-The-Air update)
+option('ota', type: 'boolean', value: false,
+    description: 'Enable OTA firmware update service')
+option('ota_url', type: 'string', value: '',
+    description: 'OTA version check URL (env: RTCLAW_OTA_URL)')
+option('ota_check_interval_ms', type: 'integer', value: 0, min: 0,
+    description: 'OTA auto-check interval in ms, 0=manual only (env: RTCLAW_OTA_CHECK_INTERVAL_MS)')

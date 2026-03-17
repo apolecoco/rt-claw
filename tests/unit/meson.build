@@ -9,8 +9,17 @@ unit_test_src = files(
     'test_im_util.c',
 )
 
+test_defs = platform_defs
+
+if get_option('ota')
+    test_defs += '-DCONFIG_RTCLAW_OTA_ENABLE'
+endif
+
+# OTA test always compiled; guarded by #ifdef inside the file.
+unit_test_src += files('test_ota.c')
+
 unittest_lib = static_library('unittest',
     unit_test_src,
     include_directories : [claw_inc, claw_root_inc, cjson_inc, platform_incs],
-    c_args : platform_defs,
+    c_args : test_defs,
 )

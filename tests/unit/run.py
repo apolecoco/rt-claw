@@ -16,14 +16,27 @@ QEMU_TIMEOUT = 60
 
 def build():
     """Build vexpress-a9 firmware in unit test mode."""
+    cross_file = os.path.join(A9_PLATFORM, "cross.ini")
     env = os.environ.copy()
     env["RTCLAW_UNIT_TEST"] = "1"
+
+    # Ensure Meson is set up with OTA enabled (stubs in test_ota.c)
+    if not os.path.isfile(os.path.join(BUILD_DIR, "build.ninja")):
+        subprocess.check_call(
+            ["meson", "setup", BUILD_DIR,
+             "--cross-file", cross_file, "-Dota=true"],
+            cwd=PROJECT_ROOT, env=env,
+        )
+    else:
+        subprocess.check_call(
+            ["meson", "configure", BUILD_DIR, "-Dota=true"],
+            cwd=PROJECT_ROOT, env=env,
+        )
 
     print(">>> Building unit test firmware (vexpress-a9) ...")
     subprocess.check_call(
         ["make", "vexpress-a9-qemu"],
-        cwd=PROJECT_ROOT,
-        env=env,
+        cwd=PROJECT_ROOT, env=env,
     )
 
 

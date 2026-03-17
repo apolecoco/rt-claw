@@ -1029,18 +1029,22 @@ let flashTransport = null;
 let flashLoader = null;
 
 const espTerminal = {
-    clean() { flashLog.textContent = ''; },
+    clean() {
+        var out = document.getElementById('serial-output');
+        out.innerHTML = '';
+        window.serialCurrentLine = null;
+        if (window.ansiResetState) window.ansiResetState();
+        window.serialAnsiPartial = '';
+    },
     writeLine(data) {
-        flashLog.textContent += data + '\n';
-        flashLog.scrollTop = flashLog.scrollHeight;
+        if (window.serialAppendAnsi) window.serialAppendAnsi(data + '\n');
     },
     write(data) {
-        flashLog.textContent += data;
-        flashLog.scrollTop = flashLog.scrollHeight;
+        if (window.serialAppendAnsi) window.serialAppendAnsi(data);
     }
 };
 
-function showLog() { flashLog.style.display = 'block'; }
+function showLog() { /* output goes to serial-output now */ }
 function showProgress(pct, text) {
     flashProgress.style.display = 'block';
     flashProgressFill.style.width = pct + '%';
@@ -1048,18 +1052,30 @@ function showProgress(pct, text) {
 }
 function hideProgress() { flashProgress.style.display = 'none'; }
 
+function serialControlsSetDisabled(disabled) {
+    var panel = document.querySelector('.serial-panel');
+    panel.querySelectorAll('.serial-ctrl-btn, .serial-baud, .serial-input-bar input, .serial-input-bar button').forEach(function(el) {
+        if (el.id === 'serial-expand-btn') return;
+        el.disabled = disabled;
+        if (disabled) el.style.opacity = '0.35';
+        else el.style.opacity = '';
+    });
+}
+
 async function cleanupFlash() {
     try {
         if (flashTransport) { await flashTransport.disconnect(); }
     } catch (e) { /* ignore */ }
     flashTransport = null;
     flashLoader = null;
+    serialControlsSetDisabled(false);
 }
 
 /* ── Flash Firmware ── */
 window.flashFirmware = async function() {
     flashBtn.disabled = true;
     flashBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Connecting...';
+    serialControlsSetDisabled(true);
     showLog();
     hideProgress();
     espTerminal.clean();
@@ -1184,6 +1200,7 @@ window.flashFirmware = async function() {
 /* ── Erase Flash ── */
 window.eraseFlash = async function() {
     flashEraseBtn.disabled = true;
+    serialControlsSetDisabled(true);
     showLog();
     espTerminal.clean();
 
