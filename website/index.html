@@ -1027,27 +1027,44 @@ window.updateBoardOptions = function() {
 };
 window.updateBoardOptions();
 
-/* Fetch available versions from GitHub Releases */
+/* Fetch available versions from GitHub tags + releases */
 const GITHUB_REPO = 'zevorn/rt-claw';
-var releaseCache = null;
+var releaseTagSet = new Set();
 
 async function loadVersionOptions() {
     var versionSelect = document.getElementById('flash-version');
+    var apiBase = 'https://api.github.com/repos/' + GITHUB_REPO;
+
+    /* Fetch releases first to know which tags have firmware */
     try {
-        var resp = await fetch(
-            'https://api.github.com/repos/' + GITHUB_REPO + '/releases'
-        );
-        if (!resp.ok) return;
-        releaseCache = await resp.json();
-        releaseCache.forEach(function(rel) {
-            if (!rel.tag_name) return;
+        var rresp = await fetch(apiBase + '/releases');
+        if (rresp.ok) {
+            var releases = await rresp.json();
+            releases.forEach(function(rel) {
+                if (rel.tag_name) releaseTagSet.add(rel.tag_name);
+            });
+        }
+    } catch (e) { /* ignore */ }
+
+    /* Fetch all tags */
+    try {
+        var tresp = await fetch(apiBase + '/tags?per_page=30');
+        if (!tresp.ok) return;
+        var tags = await tresp.json();
+        tags.forEach(function(tag) {
+            var name = tag.name;
             var opt = document.createElement('option');
-            opt.value = rel.tag_name;
-            opt.textContent = rel.tag_name + (rel.prerelease ? ' (pre)' : '');
+            opt.value = name;
+            if (releaseTagSet.has(name)) {
+                opt.textContent = name;
+            } else {
+                opt.textContent = name + ' (no firmware)';
+                opt.disabled = true;
+            }
             versionSelect.appendChild(opt);
         });
     } catch (e) {
-        /* GitHub API rate-limited or unavailable — only main available */
+        /* GitHub API rate-limited or unavailable */
     }
 }
 loadVersionOptions();
