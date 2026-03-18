@@ -295,13 +295,19 @@ void vClearTickInterrupt(void)
 /* ================================================================== */
 
 /*
- * Called from the FreeRTOS IRQ handler (portASM.S) on Cortex-A ports
- * that define configINTERRUPT_CONTROLLER_CPU_INTERFACE_OFFSET.  This
- * reads the GIC acknowledge register, dispatches to the registered
- * handler, and writes the end-of-interrupt register.
+ * Called from the FreeRTOS IRQ handler (portASM.S) after it reads
+ * GICC_IAR (acknowledge).  The port already handled IAR/EOIR, so
+ * we just need to dispatch to the registered handler using the
+ * interrupt ID from ulICCIAR.
  */
 void vApplicationFPUSafeIRQHandler(uint32_t ulICCIAR)
 {
-    (void)ulICCIAR;
-    XScuGic_InterruptHandler(&xInterruptController);
+    uint32_t ulInterruptID = ulICCIAR & 0x3FFUL;
+    const XScuGic_Config *pxConfig = xInterruptController.Config;
+
+    if (ulInterruptID < XSCUGIC_MAX_NUM_INTR_INPUTS) {
+        const XScuGic_VectorTableEntry *pxEntry =
+            &pxConfig->HandlerTable[ulInterruptID];
+        pxEntry->Handler(pxEntry->CallBackRef);
+    }
 }
