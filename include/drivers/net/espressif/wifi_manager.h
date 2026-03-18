@@ -31,6 +31,9 @@ const char *wifi_manager_get_ip(void);
 esp_err_t wifi_manager_set_credentials(const char *ssid,
                                        const char *password);
 
+/* Update runtime WiFi config and trigger reconnect. */
+esp_err_t wifi_manager_reconnect(const char *ssid, const char *password);
+
 /* Scan and print nearby APs. */
 void wifi_manager_scan_and_print(void);
 

@@ -208,6 +208,24 @@ esp_err_t wifi_manager_set_credentials(const char *ssid,
     return ESP_OK;
 }
 
+esp_err_t wifi_manager_reconnect(const char *ssid, const char *password)
+{
+    wifi_config_t wifi_cfg = {0};
+    strncpy((char *)wifi_cfg.sta.ssid, ssid,
+            sizeof(wifi_cfg.sta.ssid) - 1);
+    if (password) {
+        strncpy((char *)wifi_cfg.sta.password, password,
+                sizeof(wifi_cfg.sta.password) - 1);
+    }
+
+    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_cfg));
+    s_retry_count = 0;
+    esp_wifi_disconnect();
+
+    ESP_LOGI(TAG, "reconnecting to SSID: %s", ssid);
+    return ESP_OK;
+}
+
 void wifi_manager_scan_and_print(void)
 {
     /*

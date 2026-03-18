@@ -11,7 +11,6 @@
 #include "osal/claw_os.h"
 
 #include <stdio.h>
-#include "esp_wifi.h"
 
 /* ---- WiFi shell commands ---- */
 
@@ -23,7 +22,7 @@ static void cmd_wifi_set(int argc, char **argv)
     }
     wifi_manager_set_credentials(argv[1], argv[2]);
     printf("WiFi credentials saved. Reconnecting...\n");
-    esp_wifi_disconnect();
+    wifi_manager_reconnect(argv[1], argv[2]);
 }
 
 static void cmd_wifi_status(int argc, char **argv)
