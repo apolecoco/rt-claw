@@ -99,6 +99,21 @@ Every commit **must** include `Signed-off-by` (`git commit -s`).
 
 Subsystem prefixes: `osal`, `gateway`, `swarm`, `net`, `ai`, `platform`, `build`, `docs`, `tools`, `scripts`, `main`, `drivers`, `sched`, `feishu`, `telegram`, `ci`, `claw`, `tests`.
 
+## Parallel Branch Development
+
+Use `git worktree` to work on multiple branches simultaneously without conflicts:
+
+```bash
+# Create a worktree for another branch (outside project root)
+git worktree add ../rt-claw-<topic> <branch-name>
+
+# Example: fix WiFi on a separate branch while zynq work continues
+git worktree add ../rt-claw-wifi-fix fix/wifi-reconnect
+
+# Clean up when done
+git worktree remove ../rt-claw-wifi-fix
+```
+
 ## Checks
 
 ```bash
