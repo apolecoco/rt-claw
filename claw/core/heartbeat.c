@@ -302,6 +302,11 @@ void heartbeat_stop(void)
 {
     sched_remove("heartbeat");
 
+    /* Wait for any in-flight callback to finish */
+    while (s_busy) {
+        claw_thread_delay_ms(100);
+    }
+
     if (s_last_worker) {
         claw_thread_delete(s_last_worker);
         s_last_worker = NULL;

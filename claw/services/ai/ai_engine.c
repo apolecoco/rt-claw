@@ -957,7 +957,15 @@ static int submit_and_wait(struct ai_request *req)
         return CLAW_ERROR;
     }
 
-    claw_sem_take(req->done, CLAW_WAIT_FOREVER);
+    /* Wait with periodic exit check so shutdown doesn't hang */
+    while (claw_sem_take(req->done, 500) != CLAW_OK) {
+        if (claw_thread_should_exit()) {
+            claw_sem_delete(req->done);
+            snprintf(req->reply, req->reply_size,
+                     "[shutdown in progress]");
+            return CLAW_ERROR;
+        }
+    }
     claw_sem_delete(req->done);
     return req->result;
 }

@@ -55,8 +55,8 @@ static const claw_service_t s_services[] = {
 #ifdef CONFIG_RTCLAW_LCD_ENABLE
     { "lcd",       claw_lcd_init,    NULL,              NULL },
 #endif
-    { "tools",     claw_tools_init,  NULL,              claw_tools_stop },
     { "ai_engine", ai_engine_init,   NULL,              ai_engine_stop },
+    { "tools",     claw_tools_init,  NULL,              claw_tools_stop },
 #ifdef CONFIG_RTCLAW_SKILL_ENABLE
     { "ai_skill",  ai_skill_init,    NULL,              NULL },
 #endif

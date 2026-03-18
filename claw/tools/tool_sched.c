@@ -571,6 +571,18 @@ void claw_tools_register_sched(void)
 
 void sched_tool_stop(void)
 {
+    /* Remove all registered tasks so no new callbacks fire */
+    for (int i = 0; i < SCHED_AI_MAX; i++) {
+        if (s_ctx[i].in_use) {
+            sched_remove(s_ctx[i].name);
+        }
+    }
+
+    /* Wake worker so it can check exit flag and return */
+    if (s_worker_sem) {
+        claw_sem_give(s_worker_sem);
+    }
+
     if (s_ai_worker) {
         claw_thread_delete(s_ai_worker);
         s_ai_worker = NULL;
