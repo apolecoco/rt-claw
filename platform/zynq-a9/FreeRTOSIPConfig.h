@@ -73,6 +73,15 @@
 #define ipconfigNIC_N_TX_DESC                   32
 #define ipconfigNIC_N_RX_DESC                   32
 
+/*
+ * QEMU Cadence GEM does not emulate PHY autonegotiation.
+ * Force 100 Mbps link speed instead of auto-detect.
+ */
+#define ipconfigNIC_LINKSPEED100                1
+
+/* configEMAC_TASK_STACK_SIZE for the GEM handler task */
+#define configEMAC_TASK_STACK_SIZE              (configMINIMAL_STACK_SIZE * 4)
+
 /* Socket semaphore count */
 #define ipconfigSOCK_DEFAULT_RECEIVE_BLOCK_TIME pdMS_TO_TICKS(5000)
 #define ipconfigSOCK_DEFAULT_SEND_BLOCK_TIME    pdMS_TO_TICKS(5000)
