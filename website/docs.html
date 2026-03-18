@@ -60,10 +60,10 @@
         .nav-logo img { height: 28px; }
         .nav-links { display: flex; align-items: center; gap: 1.5rem; list-style: none; }
         .nav-links a {
-            color: var(--text-muted); font-size: 0.88rem; font-weight: 500;
+            color: var(--text); font-size: 0.88rem; font-weight: 500;
             transition: color 0.2s;
         }
-        .nav-links a:hover { color: var(--text); }
+        .nav-links a:hover { color: var(--accent-light); }
         .nav-github {
             color: var(--text-muted); display: flex; align-items: center; gap: 0.4rem;
             transition: color 0.2s;
@@ -207,8 +207,8 @@
         </a>
         <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Menu">&#9776;</button>
         <ul class="nav-links">
-            <li><a href="index.html" data-en="Home" data-zh="首页">Home</a></li>
-            <li><a href="index.html#flash" data-en="Flash" data-zh="烧录">Flash</a></li>
+            <li><a href="blog.html" data-en="Blog" data-zh="博客">Blog</a></li>
+            <li><a href="docs.html" data-en="Docs" data-zh="文档">Docs</a></li>
             <li>
                 <div class="lang-toggle" onclick="toggleLang()">
                     <span id="lang-en" class="active">EN</span>
