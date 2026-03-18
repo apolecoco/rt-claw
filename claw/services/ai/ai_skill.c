@@ -219,19 +219,72 @@ const char *ai_skill_find(const char *name)
     return NULL;
 }
 
+int ai_skill_list_to_buf(char *buf, size_t size)
+{
+    if (!buf || size == 0) {
+        return 0;
+    }
+
+    int off = snprintf(buf, size, "skills: %d/%d\n", s_count, SKILL_MAX);
+    for (int i = 0; i < s_count && (size_t)off < size - 1; i++) {
+        ai_skill_t *s = &s_skills[i];
+        off += snprintf(buf + off, size - off,
+                        "  %-12s  %s%s\n", s->name, s->description,
+                        s->builtin ? " (built-in)" : "");
+    }
+    return off;
+}
+
 void ai_skill_list(void)
 {
-    printf("skills: %d/%d\n", s_count, SKILL_MAX);
-    for (int i = 0; i < s_count; i++) {
-        ai_skill_t *s = &s_skills[i];
-        printf("  %-12s  %s%s\n", s->name, s->description,
-               s->builtin ? " (built-in)" : "");
-    }
+    char buf[512];
+    ai_skill_list_to_buf(buf, sizeof(buf));
+    printf("%s", buf);
 }
 
 int ai_skill_count(void)
 {
     return s_count;
+}
+
+const char *ai_skill_get_name(int index)
+{
+    if (index < 0 || index >= s_count) {
+        return NULL;
+    }
+    return s_skills[index].name;
+}
+
+int ai_skill_try_command(const char *cmd_name, int argc, char **argv,
+                         char *reply, size_t reply_size)
+{
+    if (!cmd_name || !reply || reply_size == 0) {
+        return CLAW_ERROR;
+    }
+
+    /* Strip leading '/' */
+    const char *name = cmd_name;
+    if (name[0] == '/') {
+        name++;
+    }
+
+    /* Check if skill exists */
+    if (!ai_skill_find(name)) {
+        return CLAW_ERROR;
+    }
+
+    /* Join argv[1..argc-1] as params */
+    char params[256] = "";
+    int off = 0;
+    for (int i = 1; i < argc && off < (int)sizeof(params) - 1; i++) {
+        if (i > 1) {
+            params[off++] = ' ';
+        }
+        off += snprintf(params + off, sizeof(params) - off,
+                        "%s", argv[i]);
+    }
+
+    return ai_skill_execute(name, params, reply, reply_size);
 }
 
 char *ai_skill_build_summary(void)

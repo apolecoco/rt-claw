@@ -25,6 +25,21 @@ int  ai_skill_execute(const char *name, const char *params,
 const char *ai_skill_find(const char *name);
 void ai_skill_list(void);
 int  ai_skill_count(void);
+const char *ai_skill_get_name(int index);
+
+/**
+ * Try to execute a /command as a dynamic skill.
+ * Strips '/' prefix, looks up skill, joins remaining argv as params.
+ * Returns CLAW_OK if skill found and executed, CLAW_ERROR otherwise.
+ */
+int  ai_skill_try_command(const char *cmd_name, int argc, char **argv,
+                          char *reply, size_t reply_size);
+
+/**
+ * Write formatted skill list to buffer (for cross-channel use).
+ * Returns number of bytes written (excluding NUL).
+ */
+int  ai_skill_list_to_buf(char *buf, size_t size);
 
 /**
  * Build a summary of all skills for system prompt injection.

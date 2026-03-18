@@ -256,7 +256,9 @@ static void cmd_memories(int argc, char **argv)
 static void cmd_skill(int argc, char **argv)
 {
     if (argc < 2) {
-        ai_skill_list();
+        char buf[512];
+        ai_skill_list_to_buf(buf, sizeof(buf));
+        printf("%s", buf);
         return;
     }
 
