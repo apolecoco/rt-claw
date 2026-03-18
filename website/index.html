@@ -1762,16 +1762,16 @@ window.addEventListener('beforeunload', function() {
 /* ── Expand (cover flash panel) ── */
 function serialExpand() {
     var panel = document.querySelector('.serial-panel');
-    panel.classList.toggle('expanded');
     var btn = document.getElementById('serial-expand-btn');
-    var isExpanded = panel.classList.contains('expanded');
-    btn.classList.toggle('active', isExpanded);
-    if (isExpanded) {
-        panel.style.height = '';
-    } else {
-        /* Re-lock: clear height first to let grid compute, then freeze */
-        panel.style.height = '';
-        panel.style.height = panel.offsetHeight + 'px';
+    var wasExpanded = panel.classList.contains('expanded');
+    panel.style.height = '';
+    panel.classList.toggle('expanded');
+    btn.classList.toggle('active', !wasExpanded);
+    if (wasExpanded) {
+        /* Collapsing: wait for layout reflow then lock height */
+        requestAnimationFrame(function() {
+            panel.style.height = panel.offsetHeight + 'px';
+        });
     }
 }
 </script>
