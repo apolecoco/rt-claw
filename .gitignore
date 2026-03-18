@@ -55,3 +55,4 @@ platform/*/cross.ini
 # Claude Code
 .claude/*
 !.claude/skills/
+.humanize*
