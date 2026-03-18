@@ -20,6 +20,8 @@
 #include "claw/services/im/telegram.h"
 #include "claw/services/im/im_util.h"
 #include "claw/services/ai/ai_engine.h"
+#include "claw/services/ai/ai_skill.h"
+#include "claw/shell/shell_cmd.h"
 #include "claw/tools/claw_tools.h"
 
 #include <string.h>
@@ -328,6 +330,29 @@ static void tg_ai_worker(void *arg)
                          CLAW_WAIT_FOREVER) != CLAW_OK) {
             continue;
         }
+
+        /* Intercept /commands — try skill dispatch first */
+#ifdef CONFIG_RTCLAW_SKILL_ENABLE
+        if (in.text[0] == '/') {
+            char line_copy[MSG_TEXT_MAX];
+            snprintf(line_copy, sizeof(line_copy), "%s", in.text);
+            char *argv[8];
+            int argc = shell_tokenize(line_copy, argv, 8);
+            if (argc > 0) {
+                char *cmd_reply = claw_malloc(REPLY_BUF_SIZE);
+                if (cmd_reply &&
+                    ai_skill_try_command(argv[0], argc, argv,
+                                         cmd_reply,
+                                         REPLY_BUF_SIZE) == CLAW_OK) {
+                    enqueue_reply(in.chat_id, cmd_reply);
+                    claw_free(cmd_reply);
+                    continue;
+                }
+                claw_free(cmd_reply);
+            }
+            /* Not a skill — fall through to ai_chat() */
+        }
+#endif
 
         /* Typing indicator before AI call */
         send_chat_action(in.chat_id);

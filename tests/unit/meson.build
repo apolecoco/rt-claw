@@ -15,8 +15,13 @@ if get_option('ota')
     test_defs += '-DCONFIG_RTCLAW_OTA_ENABLE'
 endif
 
-# OTA test always compiled; guarded by #ifdef inside the file.
+if get_option('skill')
+    test_defs += '-DCONFIG_RTCLAW_SKILL_ENABLE'
+endif
+
+# OTA and skill tests always compiled; guarded by #ifdef inside.
 unit_test_src += files('test_ota.c')
+unit_test_src += files('test_ai_skill.c')
 
 unittest_lib = static_library('unittest',
     unit_test_src,

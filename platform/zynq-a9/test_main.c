@@ -26,6 +26,7 @@ extern int test_gateway_suite(void);
 extern int test_tools_suite(void);
 extern int test_im_util_suite(void);
 extern int test_ota_suite(void);
+extern int test_ai_skill_suite(void);
 
 /* GIC instance (needed by tick config) */
 XScuGic xInterruptController;
@@ -57,6 +58,7 @@ static void test_task(void *pvParameters)
     failed += test_gateway_suite();
     failed += test_tools_suite();
     failed += test_ota_suite();
+    failed += test_ai_skill_suite();
 
     printf("\n========================================\n");
     if (failed) {

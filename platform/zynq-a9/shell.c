@@ -17,6 +17,10 @@
 #include "claw_board.h"
 #include "drivers/serial/espressif/console.h"
 
+#ifdef CONFIG_RTCLAW_SKILL_ENABLE
+#include "claw/services/ai/ai_skill.h"
+#endif
+
 #include <stdio.h>
 #include <string.h>
 
@@ -25,6 +29,7 @@
 #define REPLY_SIZE  4096
 #define INPUT_SIZE  256
 #define MAX_ARGS    8
+#define SKILL_REPLY_SIZE 2048
 
 static char *s_reply;
 
@@ -322,6 +327,16 @@ static void cmd_help(int argc, char **argv)
     }
     shell_print_help(shell_common_commands,
                      shell_common_command_count());
+
+#ifdef CONFIG_RTCLAW_SKILL_ENABLE
+    if (ai_skill_count() > 0) {
+        printf("\n  Dynamic skills (invoke as /name [args]):\n");
+        for (int i = 0; i < ai_skill_count(); i++) {
+            printf("    /%s\n", ai_skill_get_name(i));
+        }
+    }
+#endif
+
     printf("\n  Anything else is sent directly to AI.\n");
 }
 
@@ -360,6 +375,24 @@ static void find_completions(const char *prefix, int prefix_len,
             }
         }
     }
+
+#ifdef CONFIG_RTCLAW_SKILL_ENABLE
+    /* Dynamic skills — match /prefix against /<skill_name> */
+    {
+        static char s_skill_match[SKILL_NAME_MAX + 2];
+        for (int i = 0; i < ai_skill_count(); i++) {
+            const char *sname = ai_skill_get_name(i);
+            if (!sname) {
+                continue;
+            }
+            snprintf(s_skill_match, sizeof(s_skill_match), "/%s", sname);
+            if (strncmp(s_skill_match, prefix, prefix_len) == 0) {
+                *match = s_skill_match;
+                (*match_count)++;
+            }
+        }
+    }
+#endif
 }
 
 /* ---- Command dispatch ---- */
@@ -390,6 +423,24 @@ static void dispatch_command(char *line)
                        argc, argv)) {
         return;
     }
+
+#ifdef CONFIG_RTCLAW_SKILL_ENABLE
+    /* Try dynamic skill as last resort */
+    {
+        char *skill_reply = claw_malloc(SKILL_REPLY_SIZE);
+        if (skill_reply && ai_skill_try_command(argv[0], argc, argv,
+                                                skill_reply,
+                                                SKILL_REPLY_SIZE)
+                == CLAW_OK) {
+            printf("\n" CLR_GREEN "<rt-claw> " CLR_RESET "%s\n",
+                   skill_reply);
+            claw_free(skill_reply);
+            return;
+        }
+        claw_free(skill_reply);
+    }
+#endif
+
     printf("Unknown command: %s (type /help)\n", argv[0]);
 }
 
