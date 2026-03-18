@@ -15,27 +15,25 @@ Inspired by the OpenClaw community, implemented in pure C99 with an OS Abstracti
 ## 2. Architecture
 
 ```
-┌─────────────────────────────────────────────────┐
-│                  Application                     │
-│    Shell (UART REPL)  ·  IM Bot (Feishu/TG)     │
-├─────────────────────────────────────────────────┤
-│                  AI Services                     │
-│   AI Engine  ·  Skill System  ·  AI Memory      │
-├─────────────────────────────────────────────────┤
-│                   Tool Use                       │
-│  GPIO · LCD · Audio · Net · Sched · OTA · ...   │
-├─────────────────────────────────────────────────┤
-│                Core Services                     │
-│   Gateway  ·  Scheduler  ·  Heartbeat  ·  Swarm │
-├─────────────────────────────────────────────────┤
-│                    OSAL                          │
-│             claw_os.h · claw_net.h               │
-├──────────────────────┬──────────────────────────┤
-│     FreeRTOS         │       RT-Thread           │
-├──────────────────────┴──────────────────────────┤
-│                  Hardware                        │
-│   ESP32-C3 · ESP32-S3 · Zynq-A9 · vexpress-A9  │
-└─────────────────────────────────────────────────┘
++--------------------------------------------------------------+
+|                     rt-claw Application                      |
+|    gateway | net | swarm | ai_engine | shell | sched | im    |
++--------------------------------------------------------------+
+|                      skills (AI Skills)                      |
+|             (one skill composes multiple tools)              |
++--------------------------------------------------------------+
+|                       tools (Tool Use)                       |
+| gpio | system | lcd | audio | http | scheduler | memory      |
++--------------------------------------------------------------+
+|                    drivers (Hardware BSP)                    |
+| WiFi | ES8311 | SSD1306 | serial | LCD framebuffer           |
++--------------------------------------------------------------+
+|                  osal/claw_os.h (OSAL API)                   |
++-------------------+-----------------------+------------------+
+| FreeRTOS (IDF)    | FreeRTOS (standalone) |    RT-Thread     |
++-------------------+-----------------------+------------------+
+| ESP32-C3 / S3     | QEMU Zynq-A9 (GEM)    | QEMU vexpress-a9 |
++-------------------+-----------------------+------------------+
 ```
 
 ### Key Components
@@ -54,6 +52,14 @@ Inspired by the OpenClaw community, implemented in pure C99 with an OS Abstracti
 
 1. **Pure C99, minimal dependencies** — ~8000 lines core, only cJSON as external dependency
 2. **Multi-RTOS portability** — Same code on FreeRTOS + RT-Thread, zero platform-specific calls
+
+```
+claw/ code ----> #include "claw_os.h" ----> zero RTOS-specific code
+                            |
+           +----------------+----------------+
+           |                |                |
+  claw_os_freertos.c  claw_os_rtthread.c  (future RTOS...)
+```
 3. **AI-driven hardware control** — Natural language → tool selection → hardware action
 4. **Browser flashing** — Web Serial API + esptool-js, zero toolchain install
 5. **Full simulator support** — QEMU for all platforms, zero-hardware development
