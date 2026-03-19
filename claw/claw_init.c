@@ -6,7 +6,12 @@
 #include "osal/claw_os.h"
 #include "claw_config.h"
 #include "claw/claw_init.h"
+/*
+ * claw_service.h provides the new OOP service framework.
+ * During transition, claw_init still uses the legacy table.
+ */
 #include "claw/core/claw_service.h"
+#include "claw/core/claw_driver.h"
 #include "claw/core/gateway.h"
 #include "claw/services/net/net_service.h"
 #include "claw/tools/claw_tools.h"
@@ -39,11 +44,17 @@
 #define TAG "init"
 
 /*
- * Service table — defines boot order and lifecycle.
- * Phase 1: all init() calls in order (dependencies flow top-to-bottom).
- * Phase 2: start() for services that have a runtime phase.
+ * Legacy service table — to be replaced by linker section
+ * auto-registration + topological sort in M3.
  */
-static const claw_service_t s_services[] = {
+typedef struct {
+    const char *name;
+    int  (*init)(void);
+    int  (*start)(void);
+    void (*stop)(void);
+} claw_legacy_service_t;
+
+static const claw_legacy_service_t s_services[] = {
     { "gateway",   gateway_init,     NULL,              gateway_stop },
 #ifdef CONFIG_RTCLAW_SCHED_ENABLE
     { "sched",     sched_init,       NULL,              sched_stop },

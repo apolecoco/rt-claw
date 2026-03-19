@@ -1,5 +1,8 @@
 src_files = files(
     'claw_init.c',
+    'core/claw_errno.c',
+    'core/service_core.c',
+    'core/driver_core.c',
     'core/gateway.c',
     'core/scheduler.c',
     'services/ai/ai_engine.c',

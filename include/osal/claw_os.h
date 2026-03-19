@@ -33,11 +33,18 @@ typedef void *claw_timer_t;
 #define CLAW_WAIT_FOREVER   UINT32_MAX
 #define CLAW_NO_WAIT        0
 
-/* Return codes */
+/*
+ * Return codes — canonical definitions in claw/core/claw_errno.h.
+ * Legacy macros kept for existing code; values match claw_err_t.
+ */
+#include "claw/core/claw_errno.h"
+
+#ifndef CLAW_OK
 #define CLAW_OK             0
-#define CLAW_ERROR          (-1)
-#define CLAW_TIMEOUT        (-2)
-#define CLAW_NOMEM          (-3)
+#endif
+#define CLAW_ERROR          CLAW_ERR_GENERIC
+#define CLAW_TIMEOUT        CLAW_ERR_TIMEOUT
+#define CLAW_NOMEM          CLAW_ERR_NOMEM
 
 /* Log levels */
 #define CLAW_LOG_ERROR      0

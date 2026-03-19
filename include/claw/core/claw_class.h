@@ -1,0 +1,90 @@
+/*
+ * Copyright (c) 2026, Chao Liu <chao.liu.zevorn@gmail.com>
+ * SPDX-License-Identifier: MIT
+ *
+ * OOP infrastructure for rt-claw — Linux kernel style.
+ *
+ * Provides:
+ *   - container_of macro (re-exported from utils/list.h)
+ *   - Linker section registration macros for services, drivers, tools
+ *   - Ops struct validation helpers
+ */
+
+#ifndef CLAW_CORE_CLAW_CLASS_H
+#define CLAW_CORE_CLAW_CLASS_H
+
+#include "utils/list.h"   /* container_of, claw_list_node_t */
+#include <stddef.h>
+
+/* ------------------------------------------------------------------ */
+/* Linker section auto-registration                                   */
+/*                                                                    */
+/* Section names are C identifiers (no dot prefix) so GNU ld          */
+/* auto-generates __start_<name> / __stop_<name> boundary symbols.    */
+/* ESP-IDF platforms additionally require .lf fragment files with      */
+/* KEEP to prevent --gc-sections from discarding these sections.      */
+/* ------------------------------------------------------------------ */
+
+struct claw_service;
+struct claw_driver;
+struct claw_tool;
+
+#define CLAW_SERVICE_REGISTER(var_name, svc_ptr)                        \
+    static const struct claw_service *                                  \
+    __attribute__((used, section("claw_services")))                     \
+    __claw_svc_##var_name = (svc_ptr)
+
+#define CLAW_DRIVER_REGISTER(var_name, drv_ptr)                         \
+    static const struct claw_driver *                                   \
+    __attribute__((used, section("claw_drivers")))                      \
+    __claw_drv_##var_name = (drv_ptr)
+
+#define CLAW_TOOL_REGISTER(var_name, tool_ptr)                          \
+    static const struct claw_tool *                                     \
+    __attribute__((used, section("claw_tools")))                        \
+    __claw_tool_##var_name = (tool_ptr)
+
+/* ------------------------------------------------------------------ */
+/* Section boundary symbols                                           */
+/*                                                                    */
+/* On Linux and bare-metal with GNU ld, these are auto-generated.     */
+/* On platforms with custom linker scripts, define them explicitly.    */
+/* ------------------------------------------------------------------ */
+
+extern const struct claw_service *__start_claw_services[];
+extern const struct claw_service *__stop_claw_services[];
+
+extern const struct claw_driver *__start_claw_drivers[];
+extern const struct claw_driver *__stop_claw_drivers[];
+
+extern const struct claw_tool *__start_claw_tools[];
+extern const struct claw_tool *__stop_claw_tools[];
+
+/* Iterate over all registered entries in a linker section */
+#define claw_for_each_registered(ptr, start, stop)                      \
+    for ((ptr) = (start); (ptr) < (stop); (ptr)++)
+
+/* ------------------------------------------------------------------ */
+/* Ops struct validation                                              */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Runtime check: validate that an ops pointer and its mandatory
+ * field are non-NULL.  Use in init/registration paths.
+ */
+#define CLAW_OPS_VALIDATE(ops_ptr, mandatory_field)                     \
+    do {                                                                \
+        if (!(ops_ptr) || !(ops_ptr)->mandatory_field)                  \
+            return CLAW_ERR_INVALID;                                    \
+    } while (0)
+
+/*
+ * Compile-time check: ensure a struct field offset is zero.
+ * Use to enforce that the base struct is the first member of a
+ * sub-struct for safe container_of pointer arithmetic.
+ */
+#define CLAW_ASSERT_EMBEDDED_FIRST(type, member)                        \
+    _Static_assert(offsetof(type, member) == 0,                         \
+        #type "." #member " must be the first member")
+
+#endif /* CLAW_CORE_CLAW_CLASS_H */
