@@ -8,6 +8,7 @@
 #include "claw/claw_init.h"
 #include "claw/core/claw_service.h"
 #include "claw/core/claw_driver.h"
+#include "claw/core/claw_tool.h"
 #include "claw/services/ai/ai_engine.h"
 
 #include <stdio.h>
@@ -55,10 +56,13 @@ int claw_init(void)
     claw_driver_collect_from_section();
     claw_driver_probe_all();
 
+    claw_tool_core_collect_from_section();
+
     claw_service_collect_from_section();
     claw_err_t err = claw_service_start_all();
     if (err != CLAW_OK) {
         CLAW_LOGE(TAG, "service startup failed: %s", claw_strerror(err));
+        return (int)err;
     }
 
 #ifdef CONFIG_RTCLAW_AI_BOOT_TEST
