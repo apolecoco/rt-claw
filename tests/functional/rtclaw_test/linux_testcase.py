@@ -30,7 +30,7 @@ class RTClawLinuxTest(unittest.TestCase):
     _kv_dir: str
 
     BOOT_MARKER = "Real-Time Claw"
-    SHELL_PROMPT = "rt-claw chat"
+    SHELL_PROMPT = "type /help for commands"
     BOOT_TIMEOUT = 15
     SHELL_TIMEOUT = 10
 

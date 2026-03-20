@@ -313,9 +313,9 @@ static void cmd_skill(int argc, char **argv)
 
     if (ai_skill_execute(argv[1], params,
                          reply, SKILL_REPLY_SIZE) == CLAW_OK) {
-        printf("\n" CLR_GREEN "<rt-claw> " CLR_RESET "%s\n", reply);
+        printf("\n" CLR_GREEN "rt-claw> " CLR_RESET "%s\n", reply);
     } else {
-        printf("\n" CLR_RED "<error> " CLR_RESET "%s\n", reply);
+        printf("\n" CLR_RED "error> " CLR_RESET "%s\n", reply);
     }
     claw_free(reply);
 }
