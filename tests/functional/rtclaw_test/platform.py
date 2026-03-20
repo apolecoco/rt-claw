@@ -113,11 +113,28 @@ def _resolve_zynq_a9() -> PlatformConfig:
     )
 
 
+def _resolve_linux() -> PlatformConfig:
+    binary = os.path.join(
+        BUILD_DIR, "linux", "platform", "linux", "rtclaw"
+    )
+    return PlatformConfig(
+        name="linux",
+        qemu_bin="",
+        flash_path=binary,
+        boot_marker="RT-Claw v",
+        shell_prompt="type /help for commands",
+        boot_timeout=15,
+        shell_timeout=10,
+        has_shell=True,
+    )
+
+
 _PLATFORM_MAP = {
     "esp32c3-qemu": _resolve_esp32c3,
     "esp32s3-qemu": _resolve_esp32s3,
     "vexpress-a9-qemu": _resolve_vexpress_a9,
     "zynq-a9-qemu": _resolve_zynq_a9,
+    "linux": _resolve_linux,
 }
 
 
