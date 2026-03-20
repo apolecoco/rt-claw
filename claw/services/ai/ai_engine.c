@@ -456,10 +456,10 @@ static cJSON *execute_tool_calls(const cJSON *content)
         notify_status(AI_STATUS_TOOL_CALL, tool_name);
 
         cJSON *result_obj = cJSON_CreateObject();
-        const claw_tool_t *tool = claw_tool_find(tool_name);
+        struct claw_tool *tool = claw_tool_core_find(tool_name);
 
         if (tool) {
-            tool->execute(input, result_obj);
+            claw_tool_invoke(tool, input, result_obj);
         }
 #ifdef CONFIG_RTCLAW_SWARM_ENABLE
         else {
@@ -623,17 +623,16 @@ static int ai_chat_with_messages(const char *system_prompt,
                     notify_status(AI_STATUS_TOOL_CALL, tname);
 
                     cJSON *res_obj = cJSON_CreateObject();
-                    const claw_tool_t *tool = claw_tool_find(tname);
+                    cJSON *invoke_params = args ? args
+                                                : cJSON_CreateObject();
+                    struct claw_tool *tool = claw_tool_core_find(tname);
                     if (tool) {
-                        tool->execute(args ? args : cJSON_CreateObject(),
-                                      res_obj);
+                        claw_tool_invoke(tool, invoke_params, res_obj);
                     } else {
                         cJSON_AddStringToObject(res_obj, "error",
                                                 "tool not found");
                     }
-                    if (args) {
-                        cJSON_Delete(args);
-                    }
+                    cJSON_Delete(invoke_params);
 
                     char *res_str = cJSON_PrintUnformatted(res_obj);
                     cJSON_Delete(res_obj);

@@ -488,13 +488,15 @@ static void do_chat(const char *msg)
     s_anim_phase = 0;
     ai_set_status_cb(chat_status_cb);
 
-    claw_thread_create("anim", anim_thread_fn, NULL, 2048, 20);
+    struct claw_thread *anim = claw_thread_create("anim",
+        anim_thread_fn, NULL, 2048, 20);
 
     int ret = ai_chat(msg, s_reply, REPLY_SIZE);
 
     s_anim_active = 0;
     ai_set_status_cb(NULL);
-    claw_thread_delay_ms(100);
+    claw_thread_delay_ms(300);
+    claw_thread_delete(anim);
     printf("\r                              \r");
 
     if (ret == CLAW_OK) {

@@ -1452,7 +1452,7 @@ static void feishu_svc_stop(struct claw_service *svc)
 /*  OOP service registration                                           */
 /* ------------------------------------------------------------------ */
 
-static const char *feishu_deps[] = { "ai_engine", NULL };
+static const char *feishu_deps[] = { "ai_engine", "tools", NULL };
 
 static const struct claw_service_ops feishu_svc_ops = {
     .init  = feishu_svc_init,
@@ -1469,4 +1469,6 @@ static struct feishu_ctx s_feishu = {
     },
 };
 
+#ifdef CONFIG_RTCLAW_FEISHU_ENABLE
 CLAW_SERVICE_REGISTER(feishu, &s_feishu.base);
+#endif

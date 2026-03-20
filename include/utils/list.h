@@ -97,6 +97,10 @@ static inline void claw_list_del(claw_list_node_t *node)
          &(pos)->member != (head); \
          (pos) = claw_list_entry((pos)->member.next, type, member))
 
+/* Iterate over list entries in reverse (tail to head) */
+#define claw_list_for_each_reverse(pos, head) \
+    for ((pos) = (head)->prev; (pos) != (head); (pos) = (pos)->prev)
+
 /* Count the number of nodes */
 static inline int claw_list_count(const claw_list_node_t *head)
 {

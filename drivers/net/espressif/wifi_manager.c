@@ -293,7 +293,12 @@ void wifi_manager_scan_and_print(void)
 static claw_err_t wifi_drv_probe(struct claw_driver *drv)
 {
     (void)drv;
-    return wifi_manager_init() == 0 ? CLAW_OK : CLAW_ERR_IO;
+    /*
+     * WiFi init is handled by board_early_init() which runs before
+     * claw_init().  Calling wifi_manager_init() again would hit
+     * ESP_ERROR_CHECK on already-initialized netif/event loop.
+     */
+    return CLAW_OK;
 }
 
 static void wifi_drv_remove(struct claw_driver *drv)

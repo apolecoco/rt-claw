@@ -13,6 +13,8 @@
 
 #include "claw_ota.h"
 #include "claw/services/ota/ota_service.h"
+#include "claw/core/claw_tool.h"
+#include "claw/tools/claw_tools.h"
 #include "claw/tools/claw_tools.h"
 
 #include <string.h>
@@ -187,8 +189,9 @@ static void test_trigger_empty_url(void)
 
 static void test_ota_tools_registered(void)
 {
-    /* Re-init tools so OTA tools get registered */
-    claw_tools_init();
+    /* Collect tools from linker sections (mirrors claw_init path) */
+    claw_tool_core_collect_from_section();
+    TEST_ASSERT_EQ(claw_tools_init(), CLAW_OK);
 
     TEST_ASSERT_NOT_NULL(claw_tool_find("ota_check"));
     TEST_ASSERT_NOT_NULL(claw_tool_find("ota_update"));

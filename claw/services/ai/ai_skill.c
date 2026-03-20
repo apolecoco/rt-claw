@@ -313,8 +313,10 @@ char *ai_skill_build_summary(void)
 
 #ifdef CLAW_PLATFORM_ESP_IDF
 
-static int tool_create_skill(const cJSON *params, cJSON *result)
+static claw_err_t tool_create_skill(struct claw_tool *tool,
+                                    const cJSON *params, cJSON *result)
 {
+    (void)tool;
     cJSON *name_j = cJSON_GetObjectItem(params, "name");
     cJSON *desc_j = cJSON_GetObjectItem(params, "description");
     cJSON *tmpl_j = cJSON_GetObjectItem(params, "prompt_template");
@@ -346,8 +348,10 @@ static int tool_create_skill(const cJSON *params, cJSON *result)
     return CLAW_OK;
 }
 
-static int tool_delete_skill(const cJSON *params, cJSON *result)
+static claw_err_t tool_delete_skill(struct claw_tool *tool,
+                                    const cJSON *params, cJSON *result)
 {
+    (void)tool;
     cJSON *name_j = cJSON_GetObjectItem(params, "name");
 
     if (!name_j || !cJSON_IsString(name_j)) {
@@ -388,25 +392,40 @@ static const char schema_delete_skill[] =
     "\"description\":\"Name of skill to delete\"}},"
     "\"required\":[\"name\"]}";
 
-void claw_tools_register_skill(void)
-{
-    claw_tool_register("create_skill",
+/* OOP tool registration */
+#ifdef CONFIG_RTCLAW_SKILL_ENABLE
+#include "claw/core/claw_tool.h"
+
+static const struct claw_tool_ops create_skill_ops = {
+    .execute = tool_create_skill,
+};
+static struct claw_tool create_skill_tool = {
+    .name = "create_skill",
+    .description =
         "Create a reusable prompt skill that persists across "
         "reboots. The skill can be invoked later via /skill <name>.",
-        schema_create_skill, tool_create_skill,
-        0, CLAW_TOOL_LOCAL_ONLY);
+    .input_schema_json = schema_create_skill,
+    .ops = &create_skill_ops,
+    .flags = CLAW_TOOL_LOCAL_ONLY,
+};
+CLAW_TOOL_REGISTER(create_skill, &create_skill_tool);
 
-    claw_tool_register("delete_skill",
+static const struct claw_tool_ops delete_skill_ops = {
+    .execute = tool_delete_skill,
+};
+static struct claw_tool delete_skill_tool = {
+    .name = "delete_skill",
+    .description =
         "Delete a user-created skill. Built-in skills cannot "
         "be deleted.",
-        schema_delete_skill, tool_delete_skill,
-        0, CLAW_TOOL_LOCAL_ONLY);
-}
+    .input_schema_json = schema_delete_skill,
+    .ops = &delete_skill_ops,
+    .flags = CLAW_TOOL_LOCAL_ONLY,
+};
+CLAW_TOOL_REGISTER(delete_skill, &delete_skill_tool);
+#endif /* CONFIG_RTCLAW_SKILL_ENABLE */
 
-#else /* non-ESP-IDF */
-
-void claw_tools_register_skill(void) {}
-
+#else /* non-ESP-IDF — no skill tools */
 #endif
 
 /* OOP service registration */

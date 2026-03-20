@@ -72,7 +72,11 @@ int claw_console_write(const void *buf, size_t len)
 static claw_err_t console_drv_probe(struct claw_driver *drv)
 {
     (void)drv;
-    claw_console_init();
+    /*
+     * Console init is handled by the shell entry point
+     * (esp_shell_loop / platform main). Calling claw_console_init()
+     * here would double-install the UART/USB-JTAG driver.
+     */
     return CLAW_OK;
 }
 

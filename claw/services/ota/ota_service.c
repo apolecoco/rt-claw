@@ -34,6 +34,7 @@ struct ota_service_ctx {
     struct claw_service    base;           /* MUST be first member */
 
     struct claw_thread    *check_thread;
+    struct claw_thread    *worker_thread;
     volatile Claw_OtaState state;          /* worker thread + main */
     char                   update_url[256];
 };
@@ -256,8 +257,15 @@ int ota_trigger_update(const char *url)
     }
     memcpy(ctx->update_url, url, len + 1);
 
-    if (!claw_thread_create("ota_worker", ota_worker_thread,
-                            ctx, 8192, 10)) {
+    /* Clean up previous worker if it finished */
+    if (ctx->worker_thread) {
+        claw_thread_delete(ctx->worker_thread);
+        ctx->worker_thread = NULL;
+    }
+
+    ctx->worker_thread = claw_thread_create("ota_worker",
+                            ota_worker_thread, ctx, 8192, 10);
+    if (!ctx->worker_thread) {
         CLAW_LOGE(TAG, "failed to create OTA worker thread");
         return CLAW_ERROR;
     }

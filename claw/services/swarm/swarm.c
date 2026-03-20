@@ -137,7 +137,7 @@ static uint8_t build_capabilities(void);
 
 static uint8_t resolve_tool_caps(const char *name)
 {
-    const claw_tool_t *tool = claw_tool_find(name);
+    const struct claw_tool *tool = claw_tool_find(name);
     if (tool && tool->required_caps) {
         return tool->required_caps;
     }
@@ -311,17 +311,17 @@ static void handle_rpc_request(struct swarm_ctx *ctx,
     snprintf(resp.tool_name, sizeof(resp.tool_name),
              "%s", req->tool_name);
 
-    const claw_tool_t *tool = claw_tool_find(req->tool_name);
+    struct claw_tool *tool = claw_tool_core_find(req->tool_name);
     if (!tool) {
         resp.status = SWARM_RPC_NOT_FOUND;
         snprintf(resp.payload, sizeof(resp.payload),
                  "{\"error\":\"tool not found on this node\"}");
     } else {
-        cJSON *params = cJSON_Parse(req->payload);
+        cJSON *parsed = cJSON_Parse(req->payload);
+        cJSON *invoke_params = parsed ? parsed : cJSON_CreateObject();
         cJSON *result = cJSON_CreateObject();
 
-        int rc = tool->execute(params ? params : cJSON_CreateObject(),
-                               result);
+        int rc = claw_tool_invoke(tool, invoke_params, result);
         resp.status = (rc == CLAW_OK) ? SWARM_RPC_OK : SWARM_RPC_ERROR;
 
         char *rs = cJSON_PrintUnformatted(result);
@@ -330,9 +330,7 @@ static void handle_rpc_request(struct swarm_ctx *ctx,
             cJSON_free(rs);
         }
         cJSON_Delete(result);
-        if (params) {
-            cJSON_Delete(params);
-        }
+        cJSON_Delete(invoke_params);
     }
 
     CLAW_LOGI(TAG, "rpc exec: %s -> status=%d", req->tool_name,
@@ -476,7 +474,7 @@ int swarm_rpc_call(const char *tool_name, const char *params,
     }
 
     /* Check tool flags — refuse to delegate local-only tools */
-    const claw_tool_t *tool = claw_tool_find(tool_name);
+    const struct claw_tool *tool = claw_tool_find(tool_name);
     if (tool && (tool->flags & CLAW_TOOL_LOCAL_ONLY)) {
         return CLAW_ERROR;
     }
@@ -793,4 +791,6 @@ static struct swarm_ctx s_ctx = {
     },
 };
 
+#ifdef CONFIG_RTCLAW_SWARM_ENABLE
 CLAW_SERVICE_REGISTER(swarm, &s_ctx.base);
+#endif

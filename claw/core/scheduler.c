@@ -61,6 +61,7 @@ static void insert_sorted(sched_task_t *task)
 static void sched_thread(void *arg)
 {
     (void)arg;
+    claw_list_node_t *pos;
 
     while (!claw_thread_should_exit()) {
         claw_thread_delay_ms(CLAW_SCHED_TICK_MS);
@@ -68,10 +69,13 @@ static void sched_thread(void *arg)
 
         claw_mutex_lock(s_lock, CLAW_WAIT_FOREVER);
 
-        claw_list_node_t *pos;
-        claw_list_node_t *tmp;
-
-        claw_list_for_each_safe(pos, tmp, &s_tasks) {
+        /*
+         * Scan the sorted task list for due items.  After each
+         * callback, restart from the head because the callback
+         * may add/remove tasks, invalidating saved iterators.
+         */
+    rescan:
+        for (pos = s_tasks.next; pos != &s_tasks; pos = pos->next) {
             sched_task_t *t = claw_list_entry(pos, sched_task_t, node);
 
             if (t->remaining == 0) {
@@ -94,7 +98,7 @@ static void sched_thread(void *arg)
                     cb(cb_arg);
                     claw_free(t);
                     claw_mutex_lock(s_lock, CLAW_WAIT_FOREVER);
-                    continue;
+                    goto rescan;
                 }
             }
 
@@ -105,6 +109,7 @@ static void sched_thread(void *arg)
             claw_mutex_unlock(s_lock);
             cb(cb_arg);
             claw_mutex_lock(s_lock, CLAW_WAIT_FOREVER);
+            goto rescan;
         }
 
         claw_mutex_unlock(s_lock);
@@ -174,6 +179,13 @@ int sched_add(const char *name, uint32_t interval_ms, int32_t count,
     if (find_task(name)) {
         claw_mutex_unlock(s_lock);
         CLAW_LOGW(TAG, "duplicate task '%s', rejected", name);
+        return CLAW_ERROR;
+    }
+
+    if (s_task_count >= CLAW_SCHED_MAX_TASKS) {
+        claw_mutex_unlock(s_lock);
+        CLAW_LOGW(TAG, "task limit reached (%d), '%s' rejected",
+                  CLAW_SCHED_MAX_TASKS, name);
         return CLAW_ERROR;
     }
 
@@ -282,6 +294,8 @@ int sched_task_count(void)
 
 /* OOP service registration */
 #include "claw/core/claw_service.h"
+#ifdef CONFIG_RTCLAW_SCHED_ENABLE
 static const char *sched_deps[] = { NULL };
 CLAW_DEFINE_SIMPLE_SERVICE(sched, "sched",
     sched_init, NULL, sched_stop, sched_deps);
+#endif

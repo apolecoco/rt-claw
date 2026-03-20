@@ -154,34 +154,40 @@ platform/zynq-a9/
 `claw/tools/tool_<name>.c`：
 
 ```c
-#include "osal/claw_os.h"
-#include "claw_config.h"
 #include "claw/tools/claw_tools.h"
-#include <vendor/lib/cjson/cJSON.h>
+#include "claw_config.h"
 
-static char *execute_my_tool(const char *params_json)
+static claw_err_t my_tool_execute(struct claw_tool *tool,
+                                  const cJSON *params, cJSON *result)
 {
-    cJSON *p = cJSON_Parse(params_json);
-    /* extract parameters, do work */
-    cJSON_Delete(p);
-    return claw_os_strdup("{\"status\":\"ok\"}");  /* must be free-able */
+    (void)tool;
+    /* extract parameters from params, do work, fill result */
+    cJSON_AddStringToObject(result, "status", "ok");
+    return CLAW_OK;
 }
 
-void claw_tools_register_my_tool(void)
-{
-    claw_tool_register(
-        "my_tool",
-        "Brief description for LLM",
-        "{\"type\":\"object\",\"properties\":{\"param1\":{\"type\":\"string\"}},\"required\":[\"param1\"]}",
-        execute_my_tool,
-        0, 0
-    );
-}
+static const struct claw_tool_ops my_tool_ops = {
+    .execute = my_tool_execute,
+};
+
+static struct claw_tool my_tool_def = {
+    .name = "my_tool",
+    .description = "Brief description for LLM",
+    .input_schema_json =
+        "{\"type\":\"object\",\"properties\":"
+        "{\"param1\":{\"type\":\"string\"}},"
+        "\"required\":[\"param1\"]}",
+    .ops = &my_tool_ops,
+};
+
+#ifdef CONFIG_RTCLAW_TOOL_MY_TOOL
+CLAW_TOOL_REGISTER(my_tool, &my_tool_def);
+#endif
 ```
 
-### 2. 在 claw_tools.c 中注册
+### 2. 自动注册
 
-在 `claw_tools_init()` 中调用 `claw_tools_register_my_tool()`，可选择使用 `#ifdef CONFIG_RTCLAW_TOOL_MY_TOOL` 条件编译保护。
+工具通过 `CLAW_TOOL_REGISTER()` 在链接阶段（GNU ld 链接器段）或构造函数阶段（ESP-IDF）自动注册。无需手动调用——使用 `#ifdef CONFIG_RTCLAW_TOOL_MY_TOOL` 条件保护使注册可选。
 
 ### 3. 添加到构建系统
 

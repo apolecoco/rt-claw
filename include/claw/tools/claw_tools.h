@@ -3,52 +3,24 @@
  * SPDX-License-Identifier: MIT
  *
  * Tool framework — register hardware capabilities as LLM tools.
+ *
+ * Tools self-register via CLAW_TOOL_REGISTER() at link time (or
+ * constructor time on ESP-IDF).  claw_tools_init() logs the count;
+ * lookup and JSON export iterate the OOP registry.
  */
 
 #ifndef CLAW_TOOLS_H
 #define CLAW_TOOLS_H
 
 #include "osal/claw_os.h"
+#include "claw/core/claw_tool.h"
 #include "cJSON.h"
 
-#define CLAW_TOOL_MAX       24
-#define CLAW_TOOL_NAME_MAX  32
-
-/* Tool flags */
-#define CLAW_TOOL_LOCAL_ONLY  (1 << 0)  /* never delegate via swarm RPC */
-
-/*
- * Tool execute function.
- * @param params  Input parameters (cJSON object, may be NULL)
- * @param result  Output: caller-allocated cJSON object to fill
- * @return CLAW_OK on success
- */
-typedef int (*claw_tool_fn)(const cJSON *params, cJSON *result);
-
-typedef struct {
-    char name[CLAW_TOOL_NAME_MAX];
-    const char *description;
-    const char *input_schema_json;  /* JSON string of input_schema */
-    claw_tool_fn execute;
-    uint8_t required_caps;          /* SWARM_CAP_* bitmap for remote exec */
-    uint8_t flags;                  /* CLAW_TOOL_* flags */
-} claw_tool_t;
-
 /**
- * Initialize tool registry. Call once at startup.
+ * Initialize tool subsystem. Call once at startup.
  */
 int claw_tools_init(void);
 void claw_tools_stop(void);
-
-/**
- * Register a tool. Returns CLAW_OK or CLAW_ERROR if full.
- * @param caps   Required SWARM_CAP_* bitmap for remote execution
- * @param flags  CLAW_TOOL_* flags (e.g. CLAW_TOOL_LOCAL_ONLY)
- */
-int claw_tool_register(const char *name, const char *description,
-                       const char *input_schema_json,
-                       claw_tool_fn execute,
-                       uint8_t caps, uint8_t flags);
 
 /**
  * Get number of registered tools.
@@ -56,14 +28,9 @@ int claw_tool_register(const char *name, const char *description,
 int claw_tools_count(void);
 
 /**
- * Get tool by index (0-based). Returns NULL if out of range.
- */
-const claw_tool_t *claw_tool_get(int index);
-
-/**
  * Find tool by name. Returns NULL if not found.
  */
-const claw_tool_t *claw_tool_find(const char *name);
+const struct claw_tool *claw_tool_find(const char *name);
 
 /**
  * Build cJSON array of all tool definitions for Claude API.
@@ -78,26 +45,6 @@ cJSON *claw_tools_to_json(void);
  * Caller must cJSON_Delete() the result.
  */
 cJSON *claw_tools_to_json_exclude(const char *prefix);
-
-/**
- * Register built-in GPIO tools.
- */
-void claw_tools_register_gpio(void);
-
-/**
- * Register built-in system tools.
- */
-void claw_tools_register_system(void);
-
-/**
- * Register built-in LCD tools.
- */
-void claw_tools_register_lcd(void);
-
-/**
- * Register scheduler tools (schedule_task, remove_task).
- */
-void claw_tools_register_sched(void);
 
 /**
  * Scheduled-task reply callback.
@@ -122,16 +69,6 @@ void sched_set_reply_context(sched_reply_fn_t fn, const char *target);
  */
 int sched_tool_remove_by_name(const char *name);
 void sched_tool_stop(void);
-
-/**
- * Register network tools (http_request).
- */
-void claw_tools_register_net(void);
-
-/**
- * Register OTA tools (ota_check, ota_update, ota_version, ota_rollback).
- */
-void claw_tools_register_ota(void);
 
 /**
  * Initialize LCD panel (QEMU RGB framebuffer).

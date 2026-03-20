@@ -47,6 +47,7 @@ struct freertos_thread {
     TaskHandle_t        handle;
     void              (*entry)(void *arg);
     void               *arg;
+    volatile int        exited; /* set by thread_wrapper before self-delete */
 };
 
 struct freertos_mutex {
@@ -77,7 +78,13 @@ static void thread_wrapper(void *param)
 {
     struct freertos_thread *ft = param;
     ft->entry(ft->arg);
-    /* Auto-delete when thread function returns */
+    /*
+     * Mark exited before self-delete so claw_thread_delete()
+     * knows not to touch the (potentially recycled) TaskHandle.
+     * The wrapper struct itself remains valid until the caller
+     * calls claw_thread_delete() which frees it.
+     */
+    ft->exited = 1;
     vTaskDelete(NULL);
 }
 
@@ -96,6 +103,7 @@ struct claw_thread *claw_thread_create(const char *name,
     ft->base.stack_size = stack_size;
     ft->entry = entry;
     ft->arg = arg;
+    ft->exited = 0;
 
     BaseType_t ret = xTaskCreate(thread_wrapper, name,
                                  stack_size / sizeof(StackType_t),
@@ -114,7 +122,15 @@ void claw_thread_delete(struct claw_thread *thread)
     }
     struct freertos_thread *ft = container_of(thread,
                                               struct freertos_thread, base);
-    vTaskDelete(ft->handle);
+    /*
+     * If the thread already self-exited (exited flag set by
+     * thread_wrapper), the TaskHandle may have been recycled
+     * by the idle task — do not touch it.  Otherwise the task
+     * is still running and we must delete it.
+     */
+    if (!ft->exited) {
+        vTaskDelete(ft->handle);
+    }
     vPortFree(ft);
 }
 

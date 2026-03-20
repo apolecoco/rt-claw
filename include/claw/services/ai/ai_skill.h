@@ -47,9 +47,4 @@ int  ai_skill_list_to_buf(char *buf, size_t size);
  */
 char *ai_skill_build_summary(void);
 
-/**
- * Register create_skill / delete_skill as LLM-callable tools.
- */
-void claw_tools_register_skill(void);
-
 #endif /* CLAW_AI_SKILL_H */

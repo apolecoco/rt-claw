@@ -13,8 +13,10 @@
 
 #ifdef CONFIG_RTCLAW_OTA_ENABLE
 
-static int tool_ota_check(const cJSON *params, cJSON *result)
+static claw_err_t tool_ota_check(struct claw_tool *tool,
+                                 const cJSON *params, cJSON *result)
 {
+    (void)tool;
     (void)params;
 
     if (!claw_ota_supported()) {
@@ -46,8 +48,10 @@ static int tool_ota_check(const cJSON *params, cJSON *result)
     return CLAW_OK;
 }
 
-static int tool_ota_update(const cJSON *params, cJSON *result)
+static claw_err_t tool_ota_update(struct claw_tool *tool,
+                                  const cJSON *params, cJSON *result)
 {
+    (void)tool;
     if (!claw_ota_supported()) {
         cJSON_AddStringToObject(result, "error",
             "OTA not supported on this platform");
@@ -105,8 +109,10 @@ static int tool_ota_update(const cJSON *params, cJSON *result)
     return CLAW_OK;
 }
 
-static int tool_ota_version(const cJSON *params, cJSON *result)
+static claw_err_t tool_ota_version(struct claw_tool *tool,
+                                   const cJSON *params, cJSON *result)
 {
+    (void)tool;
     (void)params;
 
     cJSON_AddStringToObject(result, "status", "ok");
@@ -115,8 +121,10 @@ static int tool_ota_version(const cJSON *params, cJSON *result)
     return CLAW_OK;
 }
 
-static int tool_ota_rollback(const cJSON *params, cJSON *result)
+static claw_err_t tool_ota_rollback(struct claw_tool *tool,
+                                    const cJSON *params, cJSON *result)
 {
+    (void)tool;
     (void)params;
 
     if (!claw_ota_supported()) {
@@ -149,32 +157,63 @@ static const char schema_ota_update[] =
     "configured OTA server for the latest version.\"}},"
     "\"required\":[]}";
 
-void claw_tools_register_ota(void)
-{
-    claw_tool_register("ota_check",
+/* ---- OOP tool registration ---- */
+
+static const struct claw_tool_ops ota_check_ops = {
+    .execute = tool_ota_check,
+};
+static struct claw_tool ota_check_tool = {
+    .name = "ota_check",
+    .description =
         "Check if a firmware update is available. Returns the "
         "current version and new version info if an update exists.",
-        schema_empty, tool_ota_check,
-        0, CLAW_TOOL_LOCAL_ONLY);
+    .input_schema_json = schema_empty,
+    .ops = &ota_check_ops,
+    .flags = CLAW_TOOL_LOCAL_ONLY,
+};
+CLAW_TOOL_REGISTER(ota_check, &ota_check_tool);
 
-    claw_tool_register("ota_update",
+static const struct claw_tool_ops ota_update_ops = {
+    .execute = tool_ota_update,
+};
+static struct claw_tool ota_update_tool = {
+    .name = "ota_update",
+    .description =
         "Trigger an OTA firmware update. Optionally provide a "
         "direct firmware URL. The device will download, flash, "
         "and reboot automatically. Use with caution.",
-        schema_ota_update, tool_ota_update,
-        0, CLAW_TOOL_LOCAL_ONLY);
+    .input_schema_json = schema_ota_update,
+    .ops = &ota_update_ops,
+    .flags = CLAW_TOOL_LOCAL_ONLY,
+};
+CLAW_TOOL_REGISTER(ota_update, &ota_update_tool);
 
-    claw_tool_register("ota_version",
+static const struct claw_tool_ops ota_version_ops = {
+    .execute = tool_ota_version,
+};
+static struct claw_tool ota_version_tool = {
+    .name = "ota_version",
+    .description =
         "Get the currently running firmware version.",
-        schema_empty, tool_ota_version,
-        0, CLAW_TOOL_LOCAL_ONLY);
+    .input_schema_json = schema_empty,
+    .ops = &ota_version_ops,
+    .flags = CLAW_TOOL_LOCAL_ONLY,
+};
+CLAW_TOOL_REGISTER(ota_version, &ota_version_tool);
 
-    claw_tool_register("ota_rollback",
+static const struct claw_tool_ops ota_rollback_ops = {
+    .execute = tool_ota_rollback,
+};
+static struct claw_tool ota_rollback_tool = {
+    .name = "ota_rollback",
+    .description =
         "Roll back to the previous firmware version and reboot. "
         "Use this if the current firmware has issues after an OTA "
         "update. WARNING: device will reboot immediately.",
-        schema_empty, tool_ota_rollback,
-        0, CLAW_TOOL_LOCAL_ONLY);
-}
+    .input_schema_json = schema_empty,
+    .ops = &ota_rollback_ops,
+    .flags = CLAW_TOOL_LOCAL_ONLY,
+};
+CLAW_TOOL_REGISTER(ota_rollback, &ota_rollback_tool);
 
 #endif /* CONFIG_RTCLAW_OTA_ENABLE */

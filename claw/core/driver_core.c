@@ -42,11 +42,18 @@ claw_err_t claw_driver_register(struct claw_driver *drv)
 
 claw_err_t claw_driver_collect_from_section(void)
 {
+    static int s_collected;
     const struct claw_driver **p;
+
+    if (s_collected) {
+        return CLAW_OK;
+    }
 
     if (!__start_claw_drivers || !__stop_claw_drivers) {
         return CLAW_OK;
     }
+
+    s_collected = 1;
 
     claw_for_each_registered(p, __start_claw_drivers,
                              __stop_claw_drivers) {
@@ -107,6 +114,6 @@ void claw_driver_remove_all(void)
             CLAW_LOGI(TAG, "remove: %s", drv->name);
             drv->ops->remove(drv);
         }
-        drv->state = CLAW_DRV_REMOVED;
+        drv->state = CLAW_DRV_REGISTERED;
     }
 }

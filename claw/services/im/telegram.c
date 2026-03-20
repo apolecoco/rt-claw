@@ -654,7 +654,7 @@ const char *telegram_get_bot_token(void)   { return ""; }
 /*  OOP service registration                                           */
 /* ------------------------------------------------------------------ */
 
-static const char *telegram_deps[] = { "ai_engine", NULL };
+static const char *telegram_deps[] = { "ai_engine", "tools", NULL };
 
 static const struct claw_service_ops telegram_svc_ops = {
     .init  = telegram_svc_init,
@@ -671,4 +671,6 @@ static struct telegram_ctx s_tg = {
     },
 };
 
+#ifdef CONFIG_RTCLAW_TELEGRAM_ENABLE
 CLAW_SERVICE_REGISTER(telegram, &s_tg.base);
+#endif

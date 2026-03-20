@@ -134,8 +134,10 @@ static int gpio_policy_deny(int pin, const char *op, cJSON *result)
     return CLAW_ERROR;
 }
 
-static int tool_gpio_set(const cJSON *params, cJSON *result)
+static claw_err_t tool_gpio_set(struct claw_tool *tool,
+                                const cJSON *params, cJSON *result)
 {
+    (void)tool;
     cJSON *pin_j = cJSON_GetObjectItem(params, "pin");
     cJSON *level_j = cJSON_GetObjectItem(params, "level");
 
@@ -181,8 +183,10 @@ static int tool_gpio_set(const cJSON *params, cJSON *result)
     return (err == ESP_OK) ? CLAW_OK : CLAW_ERROR;
 }
 
-static int tool_gpio_get(const cJSON *params, cJSON *result)
+static claw_err_t tool_gpio_get(struct claw_tool *tool,
+                                const cJSON *params, cJSON *result)
 {
+    (void)tool;
     cJSON *pin_j = cJSON_GetObjectItem(params, "pin");
 
     if (!pin_j || !cJSON_IsNumber(pin_j)) {
@@ -208,8 +212,10 @@ static int tool_gpio_get(const cJSON *params, cJSON *result)
     return CLAW_OK;
 }
 
-static int tool_gpio_config(const cJSON *params, cJSON *result)
+static claw_err_t tool_gpio_config(struct claw_tool *tool,
+                                   const cJSON *params, cJSON *result)
 {
+    (void)tool;
     cJSON *pin_j = cJSON_GetObjectItem(params, "pin");
     cJSON *mode_j = cJSON_GetObjectItem(params, "mode");
 
@@ -319,8 +325,10 @@ static void blink_timer_cb(void *arg)
     }
 }
 
-static int tool_gpio_blink(const cJSON *params, cJSON *result)
+static claw_err_t tool_gpio_blink(struct claw_tool *tool,
+                                  const cJSON *params, cJSON *result)
 {
+    (void)tool;
     cJSON *pin_j = cJSON_GetObjectItem(params, "pin");
     cJSON *intervals_j = cJSON_GetObjectItem(params, "intervals_ms");
     cJSON *repeat_j = cJSON_GetObjectItem(params, "repeat");
@@ -402,8 +410,10 @@ static int tool_gpio_blink(const cJSON *params, cJSON *result)
     return CLAW_OK;
 }
 
-static int tool_gpio_blink_stop(const cJSON *params, cJSON *result)
+static claw_err_t tool_gpio_blink_stop(struct claw_tool *tool,
+                                       const cJSON *params, cJSON *result)
 {
+    (void)tool;
     (void)params;
     if (s_blink.active && s_blink_timer) {
         claw_timer_stop(s_blink_timer);
@@ -460,81 +470,109 @@ static const char schema_gpio_blink[] =
 static const char schema_gpio_blink_stop[] =
     "{\"type\":\"object\",\"properties\":{}}";
 
-void claw_tools_register_gpio(void)
-{
-    memset(&s_blink, 0, sizeof(s_blink));
-
-    claw_tool_register("gpio_set",
-        "Set a GPIO pin output level (HIGH=1 or LOW=0). "
-        "Automatically configures the pin as output.",
-        schema_gpio_set, tool_gpio_set,
-        SWARM_CAP_GPIO, 0);
-
-    claw_tool_register("gpio_get",
-        "Read the current level of a GPIO pin. Returns 0 (LOW) or 1 (HIGH).",
-        schema_gpio_get, tool_gpio_get,
-        SWARM_CAP_GPIO, 0);
-
-    claw_tool_register("gpio_config",
-        "Configure a GPIO pin direction mode (input, output, or input_output).",
-        schema_gpio_config, tool_gpio_config,
-        SWARM_CAP_GPIO, 0);
-
-    claw_tool_register("gpio_blink",
-        "Start a GPIO blink pattern. Runs locally with hardware "
-        "timers — no AI API calls needed. The pin toggles at each "
-        "interval. Use this for LED patterns, Fibonacci blink, "
-        "SOS morse code, heartbeat effects, etc. "
-        "Call gpio_blink_stop to stop.",
-        schema_gpio_blink, tool_gpio_blink,
-        SWARM_CAP_GPIO, 0);
-
-    claw_tool_register("gpio_blink_stop",
-        "Stop any active GPIO blink pattern.",
-        schema_gpio_blink_stop, tool_gpio_blink_stop,
-        SWARM_CAP_GPIO, 0);
-}
-
 #else /* non-ESP-IDF */
 
-static int tool_gpio_unsupported(const cJSON *params,
-                                  cJSON *result)
+static claw_err_t tool_gpio_unsupported(struct claw_tool *tool,
+                                        const cJSON *params,
+                                        cJSON *result)
 {
+    (void)tool;
     (void)params;
     cJSON_AddStringToObject(result, "error",
         "GPIO not supported on this platform");
     return CLAW_OK;
 }
 
-static const char schema_gpio_empty[] =
+static const char schema_gpio_set[] =
+    "{\"type\":\"object\",\"properties\":{}}";
+static const char schema_gpio_get[] =
+    "{\"type\":\"object\",\"properties\":{}}";
+static const char schema_gpio_config[] =
+    "{\"type\":\"object\",\"properties\":{}}";
+static const char schema_gpio_blink[] =
+    "{\"type\":\"object\",\"properties\":{}}";
+static const char schema_gpio_blink_stop[] =
     "{\"type\":\"object\",\"properties\":{}}";
 
-void claw_tools_register_gpio(void)
-{
-    claw_tool_register("gpio_set",
-        "Set GPIO pin (unsupported on this platform).",
-        schema_gpio_empty, tool_gpio_unsupported,
-        SWARM_CAP_GPIO, CLAW_TOOL_LOCAL_ONLY);
-
-    claw_tool_register("gpio_get",
-        "Read GPIO pin (unsupported on this platform).",
-        schema_gpio_empty, tool_gpio_unsupported,
-        SWARM_CAP_GPIO, CLAW_TOOL_LOCAL_ONLY);
-
-    claw_tool_register("gpio_config",
-        "Configure GPIO (unsupported on this platform).",
-        schema_gpio_empty, tool_gpio_unsupported,
-        SWARM_CAP_GPIO, CLAW_TOOL_LOCAL_ONLY);
-
-    claw_tool_register("gpio_blink",
-        "Blink GPIO (unsupported on this platform).",
-        schema_gpio_empty, tool_gpio_unsupported,
-        SWARM_CAP_GPIO, CLAW_TOOL_LOCAL_ONLY);
-
-    claw_tool_register("gpio_blink_stop",
-        "Stop blink (unsupported on this platform).",
-        schema_gpio_empty, tool_gpio_unsupported,
-        SWARM_CAP_GPIO, CLAW_TOOL_LOCAL_ONLY);
-}
+#define tool_gpio_set        tool_gpio_unsupported
+#define tool_gpio_get        tool_gpio_unsupported
+#define tool_gpio_config     tool_gpio_unsupported
+#define tool_gpio_blink      tool_gpio_unsupported
+#define tool_gpio_blink_stop tool_gpio_unsupported
 
 #endif
+
+/* ---- OOP tool registration ---- */
+
+#ifdef CONFIG_RTCLAW_TOOL_GPIO
+
+static const struct claw_tool_ops gpio_set_ops = {
+    .execute = tool_gpio_set,
+};
+static struct claw_tool gpio_set_tool = {
+    .name = "gpio_set",
+    .description =
+        "Set a GPIO pin output level (HIGH=1 or LOW=0). "
+        "Automatically configures the pin as output.",
+    .input_schema_json = schema_gpio_set,
+    .ops = &gpio_set_ops,
+    .required_caps = SWARM_CAP_GPIO,
+};
+CLAW_TOOL_REGISTER(gpio_set, &gpio_set_tool);
+
+static const struct claw_tool_ops gpio_get_ops = {
+    .execute = tool_gpio_get,
+};
+static struct claw_tool gpio_get_tool = {
+    .name = "gpio_get",
+    .description =
+        "Read the current level of a GPIO pin. Returns 0 (LOW) or 1 (HIGH).",
+    .input_schema_json = schema_gpio_get,
+    .ops = &gpio_get_ops,
+    .required_caps = SWARM_CAP_GPIO,
+};
+CLAW_TOOL_REGISTER(gpio_get, &gpio_get_tool);
+
+static const struct claw_tool_ops gpio_config_ops = {
+    .execute = tool_gpio_config,
+};
+static struct claw_tool gpio_config_tool = {
+    .name = "gpio_config",
+    .description =
+        "Configure a GPIO pin direction mode (input, output, or input_output).",
+    .input_schema_json = schema_gpio_config,
+    .ops = &gpio_config_ops,
+    .required_caps = SWARM_CAP_GPIO,
+};
+CLAW_TOOL_REGISTER(gpio_config, &gpio_config_tool);
+
+static const struct claw_tool_ops gpio_blink_ops = {
+    .execute = tool_gpio_blink,
+};
+static struct claw_tool gpio_blink_tool = {
+    .name = "gpio_blink",
+    .description =
+        "Start a GPIO blink pattern. Runs locally with hardware "
+        "timers — no AI API calls needed. The pin toggles at each "
+        "interval. Use this for LED patterns, Fibonacci blink, "
+        "SOS morse code, heartbeat effects, etc. "
+        "Call gpio_blink_stop to stop.",
+    .input_schema_json = schema_gpio_blink,
+    .ops = &gpio_blink_ops,
+    .required_caps = SWARM_CAP_GPIO,
+};
+CLAW_TOOL_REGISTER(gpio_blink, &gpio_blink_tool);
+
+static const struct claw_tool_ops gpio_blink_stop_ops = {
+    .execute = tool_gpio_blink_stop,
+};
+static struct claw_tool gpio_blink_stop_tool = {
+    .name = "gpio_blink_stop",
+    .description = "Stop any active GPIO blink pattern.",
+    .input_schema_json = schema_gpio_blink_stop,
+    .ops = &gpio_blink_stop_ops,
+    .required_caps = SWARM_CAP_GPIO,
+};
+CLAW_TOOL_REGISTER(gpio_blink_stop, &gpio_blink_stop_tool);
+
+#endif /* CONFIG_RTCLAW_TOOL_GPIO */

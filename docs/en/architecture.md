@@ -119,7 +119,7 @@ role (WORKER / THINKER / COORDINATOR / OBSERVER), and active task count.
 Load-aware node selection picks the least-loaded capable node for RPC.
 Exponential-backoff RPC retry (3 attempts, 500ms / 1s / 2s). Tools marked
 `CLAW_TOOL_LOCAL_ONLY` are never delegated remotely. Tool capability
-matching uses `claw_tool_t.required_caps` with prefix-based fallback.
+matching uses `struct claw_tool.required_caps` with prefix-based fallback.
 
 ### Network (`claw/services/net/`)
 

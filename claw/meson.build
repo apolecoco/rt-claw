@@ -21,6 +21,7 @@ src_files = files(
     'tools/tool_sched.c',
     'tools/tool_system.c',
     'tools/tool_net.c',
+    'tools/tool_audio.c',
 )
 
 # Drivers (outside claw/ directory)
@@ -77,6 +78,12 @@ src_files += files(
     'services/ota/ota_service.c',
     'tools/tool_ota.c',
 )
+# Non-ESP, non-Linux platforms need an OTA platform stub when ota is
+# enabled.  Linux provides its own in platform/linux/meson.build;
+# ESP-IDF provides platform/common/espressif/esp_ota.c via CMake.
+if get_option('ota') and osal_backend == 'rtthread'
+    src_files += files('../platform/linux/ota_stub.c')
+endif
 
 rtclaw_lib = static_library('rtclaw', src_files,
     include_directories: [claw_root_inc, claw_inc] + platform_incs,

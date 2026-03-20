@@ -15,8 +15,10 @@
 
 /* ---- Long-term memory tools (platform-independent) ---- */
 
-static int tool_save_memory(const cJSON *params, cJSON *result)
+static claw_err_t tool_save_memory(struct claw_tool *tool,
+                                   const cJSON *params, cJSON *result)
 {
+    (void)tool;
     cJSON *key_j = cJSON_GetObjectItem(params, "key");
     cJSON *val_j = cJSON_GetObjectItem(params, "value");
 
@@ -42,8 +44,10 @@ static int tool_save_memory(const cJSON *params, cJSON *result)
     return CLAW_OK;
 }
 
-static int tool_delete_memory(const cJSON *params, cJSON *result)
+static claw_err_t tool_delete_memory(struct claw_tool *tool,
+                                     const cJSON *params, cJSON *result)
 {
+    (void)tool;
     cJSON *key_j = cJSON_GetObjectItem(params, "key");
 
     if (!key_j || !cJSON_IsString(key_j)) {
@@ -63,8 +67,10 @@ static int tool_delete_memory(const cJSON *params, cJSON *result)
     return CLAW_OK;
 }
 
-static int tool_list_memories(const cJSON *params, cJSON *result)
+static claw_err_t tool_list_memories(struct claw_tool *tool,
+                                     const cJSON *params, cJSON *result)
 {
+    (void)tool;
     (void)params;
     cJSON_AddStringToObject(result, "status", "ok");
     cJSON_AddNumberToObject(result, "count", ai_ltm_count());
@@ -95,28 +101,8 @@ static const char schema_delete_memory[] =
     "\"description\":\"Memory key to delete\"}},"
     "\"required\":[\"key\"]}";
 
-static void register_memory_tools(void)
-{
-    static const char se[] =
-        "{\"type\":\"object\",\"properties\":{}}";
-
-    claw_tool_register("save_memory",
-        "Save a fact to long-term memory (persists across reboots). "
-        "Use when the user asks you to remember something: their "
-        "name, preferences, important facts, nicknames, etc.",
-        schema_save_memory, tool_save_memory,
-        0, CLAW_TOOL_LOCAL_ONLY);
-
-    claw_tool_register("delete_memory",
-        "Delete a fact from long-term memory by key.",
-        schema_delete_memory, tool_delete_memory,
-        0, CLAW_TOOL_LOCAL_ONLY);
-
-    claw_tool_register("list_memories",
-        "List all facts stored in long-term memory.",
-        se, tool_list_memories,
-        0, CLAW_TOOL_LOCAL_ONLY);
-}
+static const char schema_empty[] =
+    "{\"type\":\"object\",\"properties\":{}}";
 
 #ifdef CLAW_PLATFORM_ESP_IDF
 
@@ -125,8 +111,10 @@ static void register_memory_tools(void)
 #include "esp_heap_caps.h"
 #include "esp_timer.h"
 
-static int tool_system_info(const cJSON *params, cJSON *result)
+static claw_err_t tool_system_info(struct claw_tool *tool,
+                                   const cJSON *params, cJSON *result)
 {
+    (void)tool;
     (void)params;
 
     esp_chip_info_t ci;
@@ -170,8 +158,10 @@ static int tool_system_info(const cJSON *params, cJSON *result)
     return CLAW_OK;
 }
 
-static int tool_memory_info(const cJSON *params, cJSON *result)
+static claw_err_t tool_memory_info(struct claw_tool *tool,
+                                   const cJSON *params, cJSON *result)
 {
+    (void)tool;
     (void)params;
 
     size_t total = heap_caps_get_total_size(MALLOC_CAP_DEFAULT);
@@ -196,8 +186,10 @@ static int tool_memory_info(const cJSON *params, cJSON *result)
     return CLAW_OK;
 }
 
-static int tool_system_restart(const cJSON *params, cJSON *result)
+static claw_err_t tool_system_restart(struct claw_tool *tool,
+                                      const cJSON *params, cJSON *result)
 {
+    (void)tool;
     (void)params;
 
     cJSON_AddStringToObject(result, "status", "ok");
@@ -213,8 +205,10 @@ static int tool_system_restart(const cJSON *params, cJSON *result)
     return CLAW_OK;
 }
 
-static int tool_clear_history(const cJSON *params, cJSON *result)
+static claw_err_t tool_clear_history(struct claw_tool *tool,
+                                     const cJSON *params, cJSON *result)
 {
+    (void)tool;
     (void)params;
     int count = ai_memory_count();
     ai_memory_clear();
@@ -227,44 +221,14 @@ static int tool_clear_history(const cJSON *params, cJSON *result)
     return CLAW_OK;
 }
 
-static const char schema_empty[] =
-    "{\"type\":\"object\",\"properties\":{}}";
-
-void claw_tools_register_system(void)
-{
-    claw_tool_register("system_info",
-        "Get system information: chip model, firmware version, "
-        "core count, revision, and uptime in seconds.",
-        schema_empty, tool_system_info,
-        0, CLAW_TOOL_LOCAL_ONLY);
-
-    claw_tool_register("memory_info",
-        "Get heap memory status: total, free, minimum-ever-free, "
-        "largest contiguous block, usage and fragmentation percent.",
-        schema_empty, tool_memory_info,
-        0, CLAW_TOOL_LOCAL_ONLY);
-
-    claw_tool_register("clear_history",
-        "Clear the conversation history to free memory. "
-        "Use when memory is low or the conversation is too long.",
-        schema_empty, tool_clear_history,
-        0, CLAW_TOOL_LOCAL_ONLY);
-
-    register_memory_tools();
-
-    claw_tool_register("system_restart",
-        "Restart the system. Use with caution — "
-        "this will reboot the device after a 2-second delay.",
-        schema_empty, tool_system_restart,
-        0, CLAW_TOOL_LOCAL_ONLY);
-}
-
 #elif defined(CLAW_PLATFORM_RTTHREAD)
 
 #include <rtthread.h>
 
-static int tool_system_info(const cJSON *params, cJSON *result)
+static claw_err_t tool_system_info(struct claw_tool *tool,
+                                   const cJSON *params, cJSON *result)
 {
+    (void)tool;
     (void)params;
 
     cJSON_AddStringToObject(result, "status", "ok");
@@ -280,8 +244,10 @@ static int tool_system_info(const cJSON *params, cJSON *result)
     return CLAW_OK;
 }
 
-static int tool_memory_info(const cJSON *params, cJSON *result)
+static claw_err_t tool_memory_info(struct claw_tool *tool,
+                                   const cJSON *params, cJSON *result)
 {
+    (void)tool;
     (void)params;
 
     rt_size_t total = 0, used = 0, max_used = 0;
@@ -300,11 +266,10 @@ static int tool_memory_info(const cJSON *params, cJSON *result)
     return CLAW_OK;
 }
 
-static const char schema_empty[] =
-    "{\"type\":\"object\",\"properties\":{}}";
-
-static int tool_clear_history(const cJSON *params, cJSON *result)
+static claw_err_t tool_clear_history(struct claw_tool *tool,
+                                     const cJSON *params, cJSON *result)
 {
+    (void)tool;
     (void)params;
     int count = ai_memory_count();
     ai_memory_clear();
@@ -316,25 +281,15 @@ static int tool_clear_history(const cJSON *params, cJSON *result)
     return CLAW_OK;
 }
 
-void claw_tools_register_system(void)
+/* system_restart not available on RT-Thread */
+static claw_err_t tool_system_restart(struct claw_tool *tool,
+                                      const cJSON *params, cJSON *result)
 {
-    claw_tool_register("system_info",
-        "Get system information: platform, RTOS version, and uptime.",
-        schema_empty, tool_system_info,
-        0, CLAW_TOOL_LOCAL_ONLY);
-
-    claw_tool_register("memory_info",
-        "Get heap memory status: total, free, max-ever-used bytes, "
-        "and usage percentage.",
-        schema_empty, tool_memory_info,
-        0, CLAW_TOOL_LOCAL_ONLY);
-
-    claw_tool_register("clear_history",
-        "Clear the conversation history to free memory.",
-        schema_empty, tool_clear_history,
-        0, CLAW_TOOL_LOCAL_ONLY);
-
-    register_memory_tools();
+    (void)tool;
+    (void)params;
+    cJSON_AddStringToObject(result, "error",
+                            "restart not supported on this platform");
+    return CLAW_OK;
 }
 
 #elif defined(CLAW_PLATFORM_LINUX)
@@ -343,8 +298,10 @@ void claw_tools_register_system(void)
 #include <sys/utsname.h>
 #include <sys/sysinfo.h>
 
-static int tool_system_info(const cJSON *params, cJSON *result)
+static claw_err_t tool_system_info(struct claw_tool *tool,
+                                   const cJSON *params, cJSON *result)
 {
+    (void)tool;
     (void)params;
     struct utsname uts;
     uname(&uts);
@@ -364,8 +321,10 @@ static int tool_system_info(const cJSON *params, cJSON *result)
     return CLAW_OK;
 }
 
-static int tool_memory_info(const cJSON *params, cJSON *result)
+static claw_err_t tool_memory_info(struct claw_tool *tool,
+                                   const cJSON *params, cJSON *result)
 {
+    (void)tool;
     (void)params;
     struct sysinfo si;
     if (sysinfo(&si) != 0) {
@@ -384,11 +343,10 @@ static int tool_memory_info(const cJSON *params, cJSON *result)
     return CLAW_OK;
 }
 
-static const char schema_empty[] =
-    "{\"type\":\"object\",\"properties\":{}}";
-
-static int tool_clear_history(const cJSON *params, cJSON *result)
+static claw_err_t tool_clear_history(struct claw_tool *tool,
+                                     const cJSON *params, cJSON *result)
 {
+    (void)tool;
     (void)params;
     int count = ai_memory_count();
     ai_memory_clear();
@@ -400,8 +358,10 @@ static int tool_clear_history(const cJSON *params, cJSON *result)
     return CLAW_OK;
 }
 
-static int tool_system_restart(const cJSON *params, cJSON *result)
+static claw_err_t tool_system_restart(struct claw_tool *tool,
+                                      const cJSON *params, cJSON *result)
 {
+    (void)tool;
     (void)params;
     cJSON_AddStringToObject(result, "status", "ok");
     cJSON_AddStringToObject(result, "message",
@@ -412,36 +372,119 @@ static int tool_system_restart(const cJSON *params, cJSON *result)
     return CLAW_OK;
 }
 
-void claw_tools_register_system(void)
-{
-    claw_tool_register("system_info",
-        "Get system info: kernel, architecture, uptime.",
-        schema_empty, tool_system_info,
-        0, CLAW_TOOL_LOCAL_ONLY);
-
-    claw_tool_register("memory_info",
-        "Get memory: total RAM, free RAM, usage percent.",
-        schema_empty, tool_memory_info,
-        0, CLAW_TOOL_LOCAL_ONLY);
-
-    claw_tool_register("clear_history",
-        "Clear the conversation history.",
-        schema_empty, tool_clear_history,
-        0, CLAW_TOOL_LOCAL_ONLY);
-
-    register_memory_tools();
-
-    claw_tool_register("system_restart",
-        "Exit the process (no reboot on Linux).",
-        schema_empty, tool_system_restart,
-        0, CLAW_TOOL_LOCAL_ONLY);
-}
-
 #else /* unknown platform */
 
-void claw_tools_register_system(void)
+static claw_err_t tool_system_info(struct claw_tool *tool,
+                                   const cJSON *params, cJSON *result)
 {
-    /* System tools not available on this platform */
+    (void)tool;
+    (void)params;
+    cJSON_AddStringToObject(result, "error", "not supported");
+    return CLAW_OK;
 }
+#define tool_memory_info    tool_system_info
+#define tool_clear_history  tool_system_info
+#define tool_system_restart tool_system_info
 
 #endif
+
+/* ---- OOP tool registration ---- */
+
+#ifdef CONFIG_RTCLAW_TOOL_SYSTEM
+
+static const struct claw_tool_ops sys_info_ops = {
+    .execute = tool_system_info,
+};
+static struct claw_tool sys_info_tool = {
+    .name = "system_info",
+    .description =
+        "Get system information: chip model, firmware version, "
+        "core count, revision, and uptime in seconds.",
+    .input_schema_json = schema_empty,
+    .ops = &sys_info_ops,
+    .flags = CLAW_TOOL_LOCAL_ONLY,
+};
+CLAW_TOOL_REGISTER(system_info, &sys_info_tool);
+
+static const struct claw_tool_ops mem_info_ops = {
+    .execute = tool_memory_info,
+};
+static struct claw_tool mem_info_tool = {
+    .name = "memory_info",
+    .description =
+        "Get heap memory status: total, free, minimum-ever-free, "
+        "largest contiguous block, usage and fragmentation percent.",
+    .input_schema_json = schema_empty,
+    .ops = &mem_info_ops,
+    .flags = CLAW_TOOL_LOCAL_ONLY,
+};
+CLAW_TOOL_REGISTER(memory_info, &mem_info_tool);
+
+static const struct claw_tool_ops clear_hist_ops = {
+    .execute = tool_clear_history,
+};
+static struct claw_tool clear_hist_tool = {
+    .name = "clear_history",
+    .description =
+        "Clear the conversation history to free memory. "
+        "Use when memory is low or the conversation is too long.",
+    .input_schema_json = schema_empty,
+    .ops = &clear_hist_ops,
+    .flags = CLAW_TOOL_LOCAL_ONLY,
+};
+CLAW_TOOL_REGISTER(clear_history, &clear_hist_tool);
+
+static const struct claw_tool_ops save_mem_ops = {
+    .execute = tool_save_memory,
+};
+static struct claw_tool save_mem_tool = {
+    .name = "save_memory",
+    .description =
+        "Save a fact to long-term memory (persists across reboots). "
+        "Use when the user asks you to remember something: their "
+        "name, preferences, important facts, nicknames, etc.",
+    .input_schema_json = schema_save_memory,
+    .ops = &save_mem_ops,
+    .flags = CLAW_TOOL_LOCAL_ONLY,
+};
+CLAW_TOOL_REGISTER(save_memory, &save_mem_tool);
+
+static const struct claw_tool_ops del_mem_ops = {
+    .execute = tool_delete_memory,
+};
+static struct claw_tool del_mem_tool = {
+    .name = "delete_memory",
+    .description = "Delete a fact from long-term memory by key.",
+    .input_schema_json = schema_delete_memory,
+    .ops = &del_mem_ops,
+    .flags = CLAW_TOOL_LOCAL_ONLY,
+};
+CLAW_TOOL_REGISTER(delete_memory, &del_mem_tool);
+
+static const struct claw_tool_ops list_mem_ops = {
+    .execute = tool_list_memories,
+};
+static struct claw_tool list_mem_tool = {
+    .name = "list_memories",
+    .description = "List all facts stored in long-term memory.",
+    .input_schema_json = schema_empty,
+    .ops = &list_mem_ops,
+    .flags = CLAW_TOOL_LOCAL_ONLY,
+};
+CLAW_TOOL_REGISTER(list_memories, &list_mem_tool);
+
+static const struct claw_tool_ops restart_ops = {
+    .execute = tool_system_restart,
+};
+static struct claw_tool restart_tool = {
+    .name = "system_restart",
+    .description =
+        "Restart the system. Use with caution — "
+        "this will reboot the device after a 2-second delay.",
+    .input_schema_json = schema_empty,
+    .ops = &restart_ops,
+    .flags = CLAW_TOOL_LOCAL_ONLY,
+};
+CLAW_TOOL_REGISTER(system_restart, &restart_tool);
+
+#endif /* CONFIG_RTCLAW_TOOL_SYSTEM */

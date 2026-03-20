@@ -366,8 +366,10 @@ int claw_lcd_init(void)
 
 /* -------------------- Tool implementations -------------------- */
 
-static int tool_lcd_fill(const cJSON *params, cJSON *result)
+static claw_err_t tool_lcd_fill(struct claw_tool *tool,
+                                const cJSON *params, cJSON *result)
 {
+    (void)tool;
     if (!s_fb) {
         cJSON_AddStringToObject(result, "error", "LCD not initialized");
         return CLAW_ERROR;
@@ -387,8 +389,10 @@ static int tool_lcd_fill(const cJSON *params, cJSON *result)
     return CLAW_OK;
 }
 
-static int tool_lcd_text(const cJSON *params, cJSON *result)
+static claw_err_t tool_lcd_text(struct claw_tool *tool,
+                                const cJSON *params, cJSON *result)
 {
+    (void)tool;
     if (!s_fb) {
         cJSON_AddStringToObject(result, "error", "LCD not initialized");
         return CLAW_ERROR;
@@ -432,8 +436,10 @@ static int tool_lcd_text(const cJSON *params, cJSON *result)
     return CLAW_OK;
 }
 
-static int tool_lcd_rect(const cJSON *params, cJSON *result)
+static claw_err_t tool_lcd_rect(struct claw_tool *tool,
+                                const cJSON *params, cJSON *result)
 {
+    (void)tool;
     if (!s_fb) {
         cJSON_AddStringToObject(result, "error", "LCD not initialized");
         return CLAW_ERROR;
@@ -460,8 +466,10 @@ static int tool_lcd_rect(const cJSON *params, cJSON *result)
     return CLAW_OK;
 }
 
-static int tool_lcd_line(const cJSON *params, cJSON *result)
+static claw_err_t tool_lcd_line(struct claw_tool *tool,
+                                const cJSON *params, cJSON *result)
 {
+    (void)tool;
     if (!s_fb) {
         cJSON_AddStringToObject(result, "error", "LCD not initialized");
         return CLAW_ERROR;
@@ -485,8 +493,10 @@ static int tool_lcd_line(const cJSON *params, cJSON *result)
     return CLAW_OK;
 }
 
-static int tool_lcd_circle(const cJSON *params, cJSON *result)
+static claw_err_t tool_lcd_circle(struct claw_tool *tool,
+                                  const cJSON *params, cJSON *result)
 {
+    (void)tool;
     if (!s_fb) {
         cJSON_AddStringToObject(result, "error", "LCD not initialized");
         return CLAW_ERROR;
@@ -563,42 +573,6 @@ int claw_lcd_available(void)
     return (s_fb != NULL) ? 1 : 0;
 }
 
-/* -------------------- Registration -------------------- */
-
-void claw_tools_register_lcd(void)
-{
-    if (!claw_lcd_available()) {
-        CLAW_LOGW(TAG, "LCD not available, skipping tool registration");
-        return;
-    }
-
-    claw_tool_register("lcd_fill",
-        "Fill the entire LCD screen (320x240) with a solid color.",
-        schema_lcd_fill, tool_lcd_fill,
-        SWARM_CAP_LCD, 0);
-
-    claw_tool_register("lcd_text",
-        "Draw ASCII text on the LCD at position (x,y). "
-        "Size 1=8px, 2=16px, 3=24px. Screen is 320x240 pixels.",
-        schema_lcd_text, tool_lcd_text,
-        SWARM_CAP_LCD, 0);
-
-    claw_tool_register("lcd_rect",
-        "Draw a rectangle on the LCD. Set filled=true for solid fill.",
-        schema_lcd_rect, tool_lcd_rect,
-        SWARM_CAP_LCD, 0);
-
-    claw_tool_register("lcd_line",
-        "Draw a line on the LCD from (x1,y1) to (x2,y2).",
-        schema_lcd_line, tool_lcd_line,
-        SWARM_CAP_LCD, 0);
-
-    claw_tool_register("lcd_circle",
-        "Draw a circle on the LCD at center (x,y) with given radius.",
-        schema_lcd_circle, tool_lcd_circle,
-        SWARM_CAP_LCD, 0);
-}
-
 /* -------------------- Status bar API -------------------- */
 
 #define STATUS_Y    220
@@ -668,10 +642,6 @@ int __attribute__((weak)) claw_lcd_available(void)
     return 0;
 }
 
-void claw_tools_register_lcd(void)
-{
-}
-
 void __attribute__((weak)) claw_lcd_status(const char *msg)
 {
     (void)msg;
@@ -684,6 +654,31 @@ void __attribute__((weak)) claw_lcd_progress(int percent)
 
 #else /* non-ESP-IDF */
 
+static claw_err_t tool_lcd_fill(struct claw_tool *tool,
+                                const cJSON *params, cJSON *result)
+{
+    (void)tool;
+    (void)params;
+    cJSON_AddStringToObject(result, "error",
+        "LCD not supported on this platform");
+    return CLAW_OK;
+}
+#define tool_lcd_text   tool_lcd_fill
+#define tool_lcd_rect   tool_lcd_fill
+#define tool_lcd_line   tool_lcd_fill
+#define tool_lcd_circle tool_lcd_fill
+
+static const char schema_lcd_fill[] =
+    "{\"type\":\"object\",\"properties\":{}}";
+static const char schema_lcd_text[] =
+    "{\"type\":\"object\",\"properties\":{}}";
+static const char schema_lcd_rect[] =
+    "{\"type\":\"object\",\"properties\":{}}";
+static const char schema_lcd_line[] =
+    "{\"type\":\"object\",\"properties\":{}}";
+static const char schema_lcd_circle[] =
+    "{\"type\":\"object\",\"properties\":{}}";
+
 int claw_lcd_init(void)
 {
     return CLAW_ERROR;
@@ -692,10 +687,6 @@ int claw_lcd_init(void)
 int claw_lcd_available(void)
 {
     return 0;
-}
-
-void claw_tools_register_lcd(void)
-{
 }
 
 void claw_lcd_status(const char *msg)
@@ -709,3 +700,75 @@ void claw_lcd_progress(int percent)
 }
 
 #endif
+
+/* ---- OOP tool registration ---- */
+
+#ifdef CONFIG_RTCLAW_TOOL_LCD
+
+static const struct claw_tool_ops lcd_fill_ops = {
+    .execute = tool_lcd_fill,
+};
+static struct claw_tool lcd_fill_tool = {
+    .name = "lcd_fill",
+    .description =
+        "Fill the entire LCD screen (320x240) with a solid color.",
+    .input_schema_json = schema_lcd_fill,
+    .ops = &lcd_fill_ops,
+    .required_caps = SWARM_CAP_LCD,
+};
+CLAW_TOOL_REGISTER(lcd_fill, &lcd_fill_tool);
+
+static const struct claw_tool_ops lcd_text_ops = {
+    .execute = tool_lcd_text,
+};
+static struct claw_tool lcd_text_tool = {
+    .name = "lcd_text",
+    .description =
+        "Draw ASCII text on the LCD at position (x,y). "
+        "Size 1=8px, 2=16px, 3=24px. Screen is 320x240 pixels.",
+    .input_schema_json = schema_lcd_text,
+    .ops = &lcd_text_ops,
+    .required_caps = SWARM_CAP_LCD,
+};
+CLAW_TOOL_REGISTER(lcd_text, &lcd_text_tool);
+
+static const struct claw_tool_ops lcd_rect_ops = {
+    .execute = tool_lcd_rect,
+};
+static struct claw_tool lcd_rect_tool = {
+    .name = "lcd_rect",
+    .description =
+        "Draw a rectangle on the LCD. Set filled=true for solid fill.",
+    .input_schema_json = schema_lcd_rect,
+    .ops = &lcd_rect_ops,
+    .required_caps = SWARM_CAP_LCD,
+};
+CLAW_TOOL_REGISTER(lcd_rect, &lcd_rect_tool);
+
+static const struct claw_tool_ops lcd_line_ops = {
+    .execute = tool_lcd_line,
+};
+static struct claw_tool lcd_line_tool = {
+    .name = "lcd_line",
+    .description =
+        "Draw a line on the LCD from (x1,y1) to (x2,y2).",
+    .input_schema_json = schema_lcd_line,
+    .ops = &lcd_line_ops,
+    .required_caps = SWARM_CAP_LCD,
+};
+CLAW_TOOL_REGISTER(lcd_line, &lcd_line_tool);
+
+static const struct claw_tool_ops lcd_circle_ops = {
+    .execute = tool_lcd_circle,
+};
+static struct claw_tool lcd_circle_tool = {
+    .name = "lcd_circle",
+    .description =
+        "Draw a circle on the LCD at center (x,y) with given radius.",
+    .input_schema_json = schema_lcd_circle,
+    .ops = &lcd_circle_ops,
+    .required_caps = SWARM_CAP_LCD,
+};
+CLAW_TOOL_REGISTER(lcd_circle, &lcd_circle_tool);
+
+#endif /* CONFIG_RTCLAW_TOOL_LCD */

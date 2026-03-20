@@ -389,8 +389,10 @@ static void sched_nvs_restore(void)
     }
 }
 
-static int tool_schedule_task(const cJSON *params, cJSON *result)
+static claw_err_t tool_schedule_task(struct claw_tool *tool,
+                                     const cJSON *params, cJSON *result)
 {
+    (void)tool;
     cJSON *name_j = cJSON_GetObjectItem(params, "name");
     cJSON *interval_j = cJSON_GetObjectItem(params, "interval_seconds");
     cJSON *count_j = cJSON_GetObjectItem(params, "count");
@@ -469,8 +471,10 @@ static int tool_schedule_task(const cJSON *params, cJSON *result)
     return CLAW_OK;
 }
 
-static int tool_remove_task(const cJSON *params, cJSON *result)
+static claw_err_t tool_remove_task(struct claw_tool *tool,
+                                   const cJSON *params, cJSON *result)
 {
+    (void)tool;
     cJSON *name_j = cJSON_GetObjectItem(params, "name");
 
     if (!name_j || !cJSON_IsString(name_j)) {
@@ -496,8 +500,10 @@ static int tool_remove_task(const cJSON *params, cJSON *result)
     return CLAW_OK;
 }
 
-static int tool_list_tasks(const cJSON *params, cJSON *result)
+static claw_err_t tool_list_tasks(struct claw_tool *tool,
+                                  const cJSON *params, cJSON *result)
 {
+    (void)tool;
     (void)params;
     char buf[512];
     sched_list_to_buf(buf, sizeof(buf));
@@ -530,8 +536,15 @@ static const char schema_remove[] =
     "\"description\":\"Name of the task to remove\"}},"
     "\"required\":[\"name\"]}";
 
-void claw_tools_register_sched(void)
+static int s_sched_inited;
+
+static claw_err_t sched_tool_init_subsys(struct claw_tool *tool)
 {
+    (void)tool;
+    if (s_sched_inited) {
+        return CLAW_OK;
+    }
+
     memset(s_ctx, 0, sizeof(s_ctx));
     s_worker_busy = 0;
     s_pending_ctx = NULL;
@@ -539,35 +552,103 @@ void claw_tools_register_sched(void)
     s_rctx_target[0] = '\0';
 
     s_worker_sem = claw_sem_create("sched_w", 0);
+    if (!s_worker_sem) {
+        return CLAW_ERR_NOMEM;
+    }
+
     s_worker_lock = claw_mutex_create("sched_w");
+    if (!s_worker_lock) {
+        claw_sem_delete(s_worker_sem);
+        s_worker_sem = NULL;
+        return CLAW_ERR_NOMEM;
+    }
+
     s_rctx_lock = claw_mutex_create("sched_rc");
+    if (!s_rctx_lock) {
+        claw_mutex_delete(s_worker_lock);
+        s_worker_lock = NULL;
+        claw_sem_delete(s_worker_sem);
+        s_worker_sem = NULL;
+        return CLAW_ERR_NOMEM;
+    }
 
     s_ai_worker = claw_thread_create("sched_ai",
         ai_worker_thread, NULL,
         WORKER_STACK, WORKER_PRIO);
+    if (!s_ai_worker) {
+        claw_mutex_delete(s_rctx_lock);
+        s_rctx_lock = NULL;
+        claw_mutex_delete(s_worker_lock);
+        s_worker_lock = NULL;
+        claw_sem_delete(s_worker_sem);
+        s_worker_sem = NULL;
+        return CLAW_ERR_NOMEM;
+    }
 
-    claw_tool_register("list_tasks",
+    s_sched_inited = 1;
+    sched_nvs_restore();
+    return CLAW_OK;
+}
+
+static void sched_tool_cleanup(struct claw_tool *tool)
+{
+    (void)tool;
+    if (!s_sched_inited) {
+        return;
+    }
+    sched_tool_stop();
+    s_sched_inited = 0;
+}
+
+/* OOP tool registration */
+#ifdef CONFIG_RTCLAW_TOOL_SCHED
+
+static const struct claw_tool_ops list_tasks_ops = {
+    .execute = tool_list_tasks,
+    .init = sched_tool_init_subsys,
+    .cleanup = sched_tool_cleanup,
+};
+static struct claw_tool list_tasks_tool = {
+    .name = "list_tasks",
+    .description =
         "List all active scheduled tasks with their names, "
         "intervals, and remaining execution counts. Call this "
         "before removing tasks to see what's available.",
-        schema_list_tasks, tool_list_tasks,
-        0, CLAW_TOOL_LOCAL_ONLY);
+    .input_schema_json = schema_list_tasks,
+    .ops = &list_tasks_ops,
+    .flags = CLAW_TOOL_LOCAL_ONLY,
+};
+CLAW_TOOL_REGISTER(list_tasks, &list_tasks_tool);
 
-    claw_tool_register("schedule_task",
+static const struct claw_tool_ops schedule_task_ops = {
+    .execute = tool_schedule_task,
+};
+static struct claw_tool schedule_task_tool = {
+    .name = "schedule_task",
+    .description =
         "Schedule a recurring AI task. The prompt will be executed "
         "periodically at the given interval. Use this when the user "
         "asks to do something repeatedly or on a timer.",
-        schema_schedule, tool_schedule_task,
-        0, CLAW_TOOL_LOCAL_ONLY);
+    .input_schema_json = schema_schedule,
+    .ops = &schedule_task_ops,
+    .flags = CLAW_TOOL_LOCAL_ONLY,
+};
+CLAW_TOOL_REGISTER(schedule_task, &schedule_task_tool);
 
-    claw_tool_register("remove_task",
+static const struct claw_tool_ops remove_task_ops = {
+    .execute = tool_remove_task,
+};
+static struct claw_tool remove_task_tool = {
+    .name = "remove_task",
+    .description =
         "Remove a previously scheduled recurring task by name.",
-        schema_remove, tool_remove_task,
-        0, CLAW_TOOL_LOCAL_ONLY);
+    .input_schema_json = schema_remove,
+    .ops = &remove_task_ops,
+    .flags = CLAW_TOOL_LOCAL_ONLY,
+};
+CLAW_TOOL_REGISTER(remove_task, &remove_task_tool);
 
-    /* Restore persistent tasks from NVS after boot */
-    sched_nvs_restore();
-}
+#endif /* CONFIG_RTCLAW_TOOL_SCHED */
 
 void sched_tool_stop(void)
 {
@@ -601,11 +682,7 @@ void sched_tool_stop(void)
     }
 }
 
-#else
-
-void claw_tools_register_sched(void)
-{
-}
+#else /* !CLAW_PLATFORM_ESP_IDF */
 
 void sched_set_reply_context(sched_reply_fn_t fn, const char *target)
 {

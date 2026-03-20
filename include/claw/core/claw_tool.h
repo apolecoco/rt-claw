@@ -44,11 +44,36 @@ struct claw_tool {
     claw_list_node_t           node;
 };
 
+/* Tool flags */
+#define CLAW_TOOL_LOCAL_ONLY  (1 << 0)
+
 /* ------------------------------------------------------------------ */
 /* Tool core API                                                      */
 /* ------------------------------------------------------------------ */
 
 claw_err_t claw_tool_core_register(struct claw_tool *tool);
 claw_err_t claw_tool_core_collect_from_section(void);
+
+struct claw_tool *claw_tool_core_find(const char *name);
+int               claw_tool_core_count(void);
+claw_list_node_t *claw_tool_core_list(void);
+
+/**
+ * Invoke a tool: validate_params (if present) then execute.
+ * Returns CLAW_ERR_INVALID if validation fails, skipping execute.
+ */
+claw_err_t claw_tool_invoke(struct claw_tool *tool,
+                             const struct cJSON *params,
+                             struct cJSON *result);
+
+/**
+ * Call ops->init() on all registered tools. Stops on first failure.
+ */
+claw_err_t claw_tool_core_init_all(void);
+
+/**
+ * Call ops->cleanup() on all registered tools (reverse order).
+ */
+void claw_tool_core_cleanup_all(void);
 
 #endif /* CLAW_CORE_CLAW_TOOL_H */

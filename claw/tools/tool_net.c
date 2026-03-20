@@ -48,8 +48,10 @@ static esp_err_t on_http_data(esp_http_client_event_t *evt)
     return ESP_OK;
 }
 
-static int tool_http_request(const cJSON *params, cJSON *result)
+static claw_err_t tool_http_request(struct claw_tool *tool,
+                                    const cJSON *params, cJSON *result)
 {
+    (void)tool;
     cJSON *j_url = cJSON_GetObjectItem(params, "url");
     if (!j_url || !cJSON_IsString(j_url)) {
         cJSON_AddStringToObject(result, "error", "missing 'url' parameter");
@@ -252,8 +254,10 @@ static int http_recv_body(int sock, char *buf, size_t buf_sz, int *status_out)
     return header_done ? 0 : -1;
 }
 
-static int tool_http_request(const cJSON *params, cJSON *result)
+static claw_err_t tool_http_request(struct claw_tool *tool,
+                                    const cJSON *params, cJSON *result)
 {
+    (void)tool;
     cJSON *j_url = cJSON_GetObjectItem(params, "url");
     if (!j_url || !cJSON_IsString(j_url)) {
         cJSON_AddStringToObject(result, "error", "missing 'url' parameter");
@@ -391,8 +395,10 @@ static int tool_http_request(const cJSON *params, cJSON *result)
 
 #include "osal/claw_net.h"
 
-static int tool_http_request(const cJSON *params, cJSON *result)
+static claw_err_t tool_http_request(struct claw_tool *tool,
+                                    const cJSON *params, cJSON *result)
 {
+    (void)tool;
     cJSON *j_url = cJSON_GetObjectItem(params, "url");
     if (!j_url || !cJSON_IsString(j_url)) {
         cJSON_AddStringToObject(result, "error",
@@ -465,8 +471,10 @@ static int tool_http_request(const cJSON *params, cJSON *result)
 
 #else /* unknown platform */
 
-static int tool_http_request(const cJSON *params, cJSON *result)
+static claw_err_t tool_http_request(struct claw_tool *tool,
+                                    const cJSON *params, cJSON *result)
 {
+    (void)tool;
     (void)params;
     cJSON_AddStringToObject(result, "error",
         "networking not supported on this platform");
@@ -493,25 +501,41 @@ static const char schema_http_request[] =
     "\"required\":[\"url\"]"
     "}";
 
-void claw_tools_register_net(void)
-{
-#if defined(CLAW_PLATFORM_ESP_IDF) || \
-    defined(CLAW_PLATFORM_LINUX)
-    static const char desc[] =
+/* ---- OOP tool registration ---- */
+
+#ifdef CONFIG_RTCLAW_TOOL_NET
+
+static const struct claw_tool_ops http_req_ops = {
+    .execute = tool_http_request,
+};
+
+#if defined(CLAW_PLATFORM_ESP_IDF) || defined(CLAW_PLATFORM_LINUX)
+static struct claw_tool http_req_tool = {
+    .name = "http_request",
+    .description =
         "Make an HTTP or HTTPS request (GET or POST). Returns status code "
         "and response body. IMPORTANT: responses larger than 4KB are "
         "truncated (truncated=true in result). Prefer compact formats "
         "(e.g. wttr.in?format=3) over verbose JSON APIs to avoid "
-        "truncation. Both HTTP and HTTPS URLs are supported.";
+        "truncation. Both HTTP and HTTPS URLs are supported.",
+    .input_schema_json = schema_http_request,
+    .ops = &http_req_ops,
+    .required_caps = SWARM_CAP_INTERNET,
+};
 #else
-    static const char desc[] =
+static struct claw_tool http_req_tool = {
+    .name = "http_request",
+    .description =
         "Make an HTTP request (GET or POST). Returns status code and "
         "response body. IMPORTANT: responses larger than 4KB are "
         "truncated (truncated=true in result). Prefer compact formats "
-        "to avoid truncation. Only plain HTTP is supported (no HTTPS).";
+        "to avoid truncation. Only plain HTTP is supported (no HTTPS).",
+    .input_schema_json = schema_http_request,
+    .ops = &http_req_ops,
+    .required_caps = SWARM_CAP_INTERNET,
+};
 #endif
 
-    claw_tool_register("http_request", desc,
-                       schema_http_request, tool_http_request,
-                       SWARM_CAP_INTERNET, 0);
-}
+CLAW_TOOL_REGISTER(http_request, &http_req_tool);
+
+#endif /* CONFIG_RTCLAW_TOOL_NET */

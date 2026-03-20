@@ -46,11 +46,18 @@ claw_err_t claw_service_register(struct claw_service *svc)
 
 claw_err_t claw_service_collect_from_section(void)
 {
+    static int s_collected;
     const struct claw_service **p;
+
+    if (s_collected) {
+        return CLAW_OK;
+    }
 
     if (!__start_claw_services || !__stop_claw_services) {
         return CLAW_OK;
     }
+
+    s_collected = 1;
 
     claw_for_each_registered(p, __start_claw_services,
                              __stop_claw_services) {
@@ -176,6 +183,31 @@ claw_err_t claw_service_start_all(void)
     for (int i = 0; i < count; i++) {
         struct claw_service *svc = sorted[i];
 
+        /*
+         * Skip if any dependency failed to init — a service
+         * whose dependency is STOPPED cannot safely initialize.
+         */
+        int dep_ok = 1;
+        if (svc->deps) {
+            for (const char **d = svc->deps; *d; d++) {
+                for (int j = 0; j < i; j++) {
+                    if (strcmp(sorted[j]->name, *d) == 0 &&
+                        sorted[j]->state == CLAW_SVC_STOPPED) {
+                        dep_ok = 0;
+                        break;
+                    }
+                }
+                if (!dep_ok) {
+                    break;
+                }
+            }
+        }
+        if (!dep_ok) {
+            CLAW_LOGW(TAG, "skip %s: dependency failed", svc->name);
+            svc->state = CLAW_SVC_STOPPED;
+            continue;
+        }
+
         CLAW_LOGI(TAG, "init: %s", svc->name);
         err = svc->ops->init(svc);
         if (err != CLAW_OK) {
@@ -203,6 +235,13 @@ claw_err_t claw_service_start_all(void)
         if (err != CLAW_OK) {
             CLAW_LOGE(TAG, "%s start failed: %s",
                       svc->name, claw_strerror(err));
+            /*
+             * Call stop() to clean up any resources the
+             * partially-successful start() may have created.
+             */
+            if (svc->ops->stop) {
+                svc->ops->stop(svc);
+            }
             svc->state = CLAW_SVC_STOPPED;
             continue;
         }
