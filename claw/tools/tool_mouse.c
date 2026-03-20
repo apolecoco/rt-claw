@@ -156,8 +156,13 @@ static const char schema_mouse_scroll[] =
     "\"description\":\"Scroll amount (-127 to 127, positive=up)\"}},"
     "\"required\":[\"delta\"]}";
 
-#else /* !CONFIG_RTCLAW_USB_HID_MOUSE */
+#endif /* CONFIG_RTCLAW_USB_HID_MOUSE */
 
+/* ---- OOP tool registration ---- */
+
+#ifdef CONFIG_RTCLAW_TOOL_MOUSE
+
+#ifndef CONFIG_RTCLAW_USB_HID_MOUSE
 static claw_err_t tool_mouse_unsupported(struct claw_tool *tool,
                                          const cJSON *params,
                                          cJSON *result)
@@ -179,12 +184,7 @@ static const char schema_mouse_scroll[] =
 #define tool_mouse_move    tool_mouse_unsupported
 #define tool_mouse_click   tool_mouse_unsupported
 #define tool_mouse_scroll  tool_mouse_unsupported
-
-#endif /* CONFIG_RTCLAW_USB_HID_MOUSE */
-
-/* ---- OOP tool registration ---- */
-
-#ifdef CONFIG_RTCLAW_TOOL_MOUSE
+#endif /* !CONFIG_RTCLAW_USB_HID_MOUSE */
 
 static const struct claw_tool_ops mouse_move_ops = {
     .execute = tool_mouse_move,

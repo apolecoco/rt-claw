@@ -432,7 +432,7 @@ static void dispatch_command(char *line)
                                                 skill_reply,
                                                 SKILL_REPLY_SIZE)
                 == CLAW_OK) {
-            printf("\n" CLR_GREEN "<rt-claw> " CLR_RESET "%s\n",
+            printf("\n" CLR_GREEN "rt-claw> " CLR_RESET "%s\n",
                    skill_reply);
             claw_free(skill_reply);
             return;
@@ -499,9 +499,9 @@ static void do_chat(const char *msg)
     printf("\r                              \r");
 
     if (ret == CLAW_OK) {
-        printf(CLR_GREEN "<rt-claw> " CLR_RESET "%s\n", s_reply);
+        printf(CLR_GREEN "rt-claw> " CLR_RESET "%s\n", s_reply);
     } else {
-        printf(CLR_RED "<error> " CLR_RESET "%s\n", s_reply);
+        printf(CLR_RED "error> " CLR_RESET "%s\n", s_reply);
     }
 }
 
@@ -520,13 +520,13 @@ void zynq_shell_loop(void)
     }
 
     printf("\n");
-    printf(CLR_CYAN "  rt-claw chat" CLR_RESET
+    printf(CLR_CYAN "  rt-claw" CLR_RESET
            "  (type /help for commands)\n");
     printf("  Direct input sends to AI, /command for system.\n");
     printf("\n");
 
     while (1) {
-        printf("\n" CLR_CYAN "<You> " CLR_RESET);
+        printf("\n" CLR_CYAN "you> " CLR_RESET);
         fflush(stdout);
         int len = shell_read_line(input, sizeof(input));
 

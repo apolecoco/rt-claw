@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <a href="https://discord.gg/BZ9nFVzX"><img src="https://img.shields.io/badge/Discord-RT--Claw-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord"></a>
+  <a href="https://discord.gg/gcxwYXQr"><img src="https://img.shields.io/badge/Discord-RT--Claw-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord"></a>
   <a href="https://qm.qq.com/q/heSPPC9De8"><img src="https://img.shields.io/badge/Join%20QQ-GTOC-brightgreen?style=for-the-badge&logo=QQ&logoColor=76bad9&color=76bad9" alt="QQ Group"></a>
   <a href="https://t.me/gevico_channel"><img src="https://img.shields.io/badge/Telegram-GTOC-blue?style=for-the-badge&logo=telegram" alt="Telegram"></a>
   <a href="https://space.bilibili.com/483048140"><img src="https://img.shields.io/badge/Bilibili-%E7%BB%9D%E5%AF%B9%E6%98%AF%E6%B3%BD%E6%96%87%E5%95%A6-FB7299?style=for-the-badge&logo=bilibili" alt="Bilibili"></a>
@@ -103,7 +103,7 @@ For real hardware (ESP32-S3/C3), WiFi setup, Feishu bot, and more — see the **
 
 Join the GTOC (Gevico Open-Source Community) channels:
 
-- **Discord**: [RT-Claw](https://discord.gg/BZ9nFVzX)
+- **Discord**: [RT-Claw](https://discord.gg/gcxwYXQr)
 - **QQ Group**: [Join](https://qm.qq.com/q/heSPPC9De8)
 - **Telegram**: [GTOC Channel](https://t.me/gevico_channel)
 - **Bilibili**: [Zevorn](https://space.bilibili.com/483048140)

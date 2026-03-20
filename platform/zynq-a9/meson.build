@@ -46,6 +46,7 @@ bsp_lib = static_library('xilinx_bsp',
     bsp_src,
     include_directories: bsp_incs,
     c_args: ['-DARMR5', '-w'],
+    override_options: ['werror=false'],
 )
 
 # ---- FreeRTOS Kernel (ARM_CA9 port) ----
@@ -72,6 +73,7 @@ freertos_lib = static_library('freertos',
     freertos_src,
     include_directories: [freertos_incs, bsp_incs],
     c_args: ['-w'],
+    override_options: ['werror=false'],
 )
 
 # ---- FreeRTOS+TCP ----
@@ -136,6 +138,7 @@ tcpip_lib = static_library('freertos_tcp',
         bsp_incs,
     ],
     c_args: ['-w', '-mno-unaligned-access'],
+    override_options: ['werror=false'],
 )
 
 # ---- Platform sources ----
@@ -165,6 +168,7 @@ rtclaw_elf = executable('rtclaw',
         '-T', platform_dir / 'link.ld',
         '-Wl,--gc-sections',
         '-Wl,--allow-multiple-definition',
+        '-Wl,--no-warn-rwx-segments',
         '-nostartfiles',
         '-Xlinker', '--defsym=_HEAP_SIZE=0x80000',
         '-Xlinker', '--defsym=_STACK_SIZE=0x4000',
@@ -196,6 +200,7 @@ rtclaw_test_elf = executable('rtclaw_test',
         '-T', platform_dir / 'link.ld',
         '-Wl,--gc-sections',
         '-Wl,--allow-multiple-definition',
+        '-Wl,--no-warn-rwx-segments',
         '-nostartfiles',
         '-Xlinker', '--defsym=_HEAP_SIZE=0x80000',
         '-Xlinker', '--defsym=_STACK_SIZE=0x4000',

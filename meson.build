@@ -3,6 +3,7 @@ project('rt-claw', 'c',
     default_options: [
         'c_std=gnu99',
         'warning_level=2',
+        'werror=true',
     ],
 )
 

@@ -22,3 +22,5 @@ idf_component_register(
     INCLUDE_DIRS ${MAIN_INCLUDES}
     REQUIRES ${MAIN_REQUIRES}
 )
+
+target_compile_options(${COMPONENT_LIB} PRIVATE -Werror)

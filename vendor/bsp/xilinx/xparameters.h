@@ -80,8 +80,12 @@
 #define XPAR_PS7_UART_1_DEVICE_ID               1U
 
 /* Stdin / stdout default to UART 1 (QEMU console) */
+#ifndef STDIN_BASEADDRESS
 #define STDIN_BASEADDRESS                       XPAR_PS7_UART_1_BASEADDR
+#endif
+#ifndef STDOUT_BASEADDRESS
 #define STDOUT_BASEADDRESS                      XPAR_PS7_UART_1_BASEADDR
+#endif
 
 /* ------------------------------------------------------------------ */
 /*  GEM (Cadence Gigabit Ethernet MAC)                                */

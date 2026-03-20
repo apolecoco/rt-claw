@@ -99,6 +99,9 @@ make run-linux                         # build + run directly
 - Include order (claw/): `claw_os.h` -> system headers -> project headers
 - Always use braces for control flow blocks
 - License header on every source file: `SPDX-License-Identifier: MIT`
+- **`-Werror` is enabled project-wide** — all compiler warnings are errors.
+  Only our code (claw/, osal/, drivers/, platform/) is affected; vendor/third-party
+  libraries are excluded. Never introduce code that produces warnings.
 
 Full reference: [docs/en/coding-style.md](docs/en/coding-style.md)
 

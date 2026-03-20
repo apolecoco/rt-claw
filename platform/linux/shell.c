@@ -307,7 +307,7 @@ static void dispatch_command(char *line)
             ai_skill_try_command(argv[0], argc, argv,
                                 skill_reply,
                                 SKILL_REPLY_SIZE) == CLAW_OK) {
-            printf("\n" CLR_GREEN "<rt-claw> " CLR_RESET
+            printf("\n" CLR_GREEN "rt-claw> " CLR_RESET
                    "%s\n", skill_reply);
             claw_free(skill_reply);
             return;
@@ -378,9 +378,9 @@ static void do_chat(const char *msg)
     printf("\r                              \r");
 
     if (ret == CLAW_OK) {
-        printf(CLR_GREEN "<rt-claw> " CLR_RESET "%s\n", s_reply);
+        printf(CLR_GREEN "rt-claw> " CLR_RESET "%s\n", s_reply);
     } else {
-        printf(CLR_RED "<error> " CLR_RESET "%s\n", s_reply);
+        printf(CLR_RED "error> " CLR_RESET "%s\n", s_reply);
     }
 
     enable_raw_mode();
@@ -401,13 +401,13 @@ void linux_shell_loop(void)
     enable_raw_mode();
 
     printf("\n");
-    printf(CLR_CYAN "  rt-claw chat" CLR_RESET
+    printf(CLR_CYAN "  rt-claw" CLR_RESET
            "  (type /help for commands, Tab to complete)\n");
     printf("  Direct input sends to AI, /command for system.\n");
     printf("\n");
 
     while (!g_exit_flag) {
-        printf("\n" CLR_CYAN "rt-claw chat> " CLR_RESET);
+        printf("\n" CLR_CYAN "you> " CLR_RESET);
         fflush(stdout);
 
         int len = shell_read_line(input, sizeof(input));

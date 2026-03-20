@@ -124,6 +124,21 @@ RTOS 头文件在 OSAL 头文件之前：
 #include "osal/claw_os.h"  /* OSAL interface */
 ```
 
+## 编译警告
+
+项目对所有自有代码强制开启 **`-Werror`**（警告即错误）：
+
+| 构建系统 | 控制方式 | 覆盖范围 |
+|----------|---------|---------|
+| Meson | `werror=true` 项目默认选项 | `claw/`、`osal/`、`drivers/`、`platform/` |
+| ESP-IDF CMake | `target_compile_options(PRIVATE -Werror)` | `rt_claw` + `main` 组件 |
+
+Vendor / 第三方库（`vendor/`、cJSON、FreeRTOS、RT-Thread、Xilinx BSP）
+**不受影响**——上游警告不归我们管。
+
+禁止提交任何产生编译器警告的代码。如果 vendor 头文件在你的代码中引发
+警告，请用 pragma 局部抑制或调整 include 结构。
+
 ## C 标准
 
 使用 **C99**（gnu99）。避免使用 GCC 和 Clang 都不支持的编译器扩展。

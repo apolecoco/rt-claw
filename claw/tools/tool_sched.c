@@ -210,7 +210,7 @@ static void ai_worker_thread(void *arg)
             if (ctx->reply_fn) {
                 ctx->reply_fn(ctx->reply_target, reply);
             } else {
-                printf("\n\033[0;33m<sched>\033[0m %s\n", reply);
+                printf("\n\033[0;33msched>\033[0m %s\n", reply);
                 fflush(stdout);
             }
         } else {
@@ -235,7 +235,7 @@ static void ai_worker_thread(void *arg)
                     if (ctx->reply_fn) {
                         ctx->reply_fn(ctx->reply_target, reply);
                     } else {
-                        printf("\n\033[0;33m<sched>\033[0m %s\n",
+                        printf("\n\033[0;33msched>\033[0m %s\n",
                                reply);
                         fflush(stdout);
                     }
@@ -247,7 +247,7 @@ static void ai_worker_thread(void *arg)
                 if (ctx->reply_fn) {
                     ctx->reply_fn(ctx->reply_target, err_reason);
                 } else {
-                    printf("\n\033[0;33m<sched>\033[0m %s\n",
+                    printf("\n\033[0;33msched>\033[0m %s\n",
                            err_reason);
                     fflush(stdout);
                 }

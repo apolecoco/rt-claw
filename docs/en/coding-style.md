@@ -126,6 +126,23 @@ include the RTOS header before the OSAL header:
 #include "osal/claw_os.h"  /* OSAL interface */
 ```
 
+## Compiler Warnings
+
+The project enforces **`-Werror`** (warnings are errors) for all
+project code. This applies to:
+
+| Build system | Mechanism | Scope |
+|-------------|-----------|-------|
+| Meson | `werror=true` project default | `claw/`, `osal/`, `drivers/`, `platform/` |
+| ESP-IDF CMake | `target_compile_options(PRIVATE -Werror)` | `rt_claw` + `main` components |
+
+Vendor / third-party libraries (`vendor/`, cJSON, FreeRTOS, RT-Thread,
+Xilinx BSP) are **excluded** — we do not control upstream warnings.
+
+Never submit code that produces compiler warnings. If a vendor header
+triggers a warning in your code, suppress it locally with a pragma or
+restructure the include.
+
 ## C Standard
 
 Write to **C99** (gnu99). Avoid compiler-specific extensions beyond

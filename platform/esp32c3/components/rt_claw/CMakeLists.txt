@@ -51,22 +51,35 @@ idf_component_register(
 )
 
 target_compile_definitions(${COMPONENT_LIB} PUBLIC CLAW_PLATFORM_ESP_IDF)
+target_compile_options(${COMPONENT_LIB} PRIVATE -Werror)
 
 # Merge Meson pre-built objects into the component library so they
 # participate in ESP-IDF's normal link group (resolves cross-references).
-file(GLOB _rtclaw_objs "${MESON_BUILD_DIR}/claw/librtclaw.a.p/*.o")
-file(GLOB _osal_objs   "${MESON_BUILD_DIR}/osal/libosal.a.p/*.o")
-file(GLOB _cjson_objs  "${MESON_BUILD_DIR}/vendor/lib/cjson/libcjson.a.p/*.o")
-
-set(_all_meson_objs ${_rtclaw_objs} ${_osal_objs} ${_cjson_objs})
-
-if(_all_meson_objs)
-    add_custom_command(TARGET ${COMPONENT_LIB} POST_BUILD
-        COMMAND ${CMAKE_AR} q $<TARGET_FILE:${COMPONENT_LIB}> ${_all_meson_objs}
-        COMMAND ${CMAKE_RANLIB} $<TARGET_FILE:${COMPONENT_LIB}>
-        COMMENT "Merging Meson pre-built objects into ${COMPONENT_LIB}"
-    )
+#
+# The glob runs at BUILD time (not configure time) via a helper script,
+# because Meson objects may not exist yet when CMake configures.
+set(_merge_script "${CMAKE_CURRENT_BINARY_DIR}/merge_meson_objs.cmake")
+file(WRITE "${_merge_script}" "
+file(GLOB _objs
+    \"${MESON_BUILD_DIR}/claw/librtclaw.a.p/*.o\"
+    \"${MESON_BUILD_DIR}/osal/libosal.a.p/*.o\"
+    \"${MESON_BUILD_DIR}/vendor/lib/cjson/libcjson.a.p/*.o\"
+)
+if(_objs)
+    execute_process(COMMAND \${AR} q \${LIB} \${_objs})
+    execute_process(COMMAND \${RANLIB} \${LIB})
 else()
-    message(WARNING "No Meson objects found in ${MESON_BUILD_DIR}. "
-                    "Run 'meson compile -C build/esp32c3-${RTCLAW_BOARD}/meson' first.")
+    message(FATAL_ERROR
+        \"No Meson objects in ${MESON_BUILD_DIR}. \"
+        \"Run 'meson compile -C build/esp32c3-${RTCLAW_BOARD}/meson' first.\")
 endif()
+")
+
+add_custom_command(TARGET ${COMPONENT_LIB} POST_BUILD
+    COMMAND ${CMAKE_COMMAND}
+        -DAR=${CMAKE_AR}
+        -DRANLIB=${CMAKE_RANLIB}
+        -DLIB=$<TARGET_FILE:${COMPONENT_LIB}>
+        -P "${_merge_script}"
+    COMMENT "Merging Meson pre-built objects into ${COMPONENT_LIB}"
+)
