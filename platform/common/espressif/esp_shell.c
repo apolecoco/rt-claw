@@ -112,6 +112,13 @@ static int shell_read_line(char *buf, int size)
             break;
         }
 
+        /* Ctrl-C — cancel current line */
+        if (ch == 3) {
+            claw_console_write("^C\r\n", 4);
+            buf[0] = '\0';
+            return 0;
+        }
+
         /* Tab completion */
         if (ch == '\t') {
             if (len > 0 && buf[0] == '/') {
@@ -513,6 +520,7 @@ static void dispatch_command(char *line)
 
 static volatile int s_anim_active;
 static volatile int s_anim_phase;
+static volatile int s_chat_cancel;
 
 static void anim_thread_fn(void *arg)
 {
@@ -521,13 +529,24 @@ static void anim_thread_fn(void *arg)
     const char *dot_str[] = { ".", "..", "..." };
 
     while (s_anim_active) {
+        /* Poll for Ctrl-C (non-blocking, 50ms timeout) */
+        uint8_t key;
+        if (claw_console_read(&key, 1, 50) > 0 && key == 3) {
+            s_chat_cancel = 1;
+            s_anim_active = 0;
+            printf("\r  ^C — cancelled"
+                   "                    \n");
+            fflush(stdout);
+            break;
+        }
+
         if (s_anim_phase == 0) {
             printf("\r  " CLR_MAGENTA "thinking %s"
                    CLR_RESET "   ", dot_str[dots]);
             fflush(stdout);
             dots = (dots + 1) % 3;
         }
-        claw_thread_delay_ms(500);
+        claw_thread_delay_ms(450);
     }
 }
 
@@ -550,6 +569,7 @@ static void do_chat(const char *msg)
 {
     s_anim_active = 1;
     s_anim_phase = 0;
+    s_chat_cancel = 0;
     ai_set_status_cb(chat_status_cb);
 
     struct claw_thread *anim = claw_thread_create("anim",
@@ -562,6 +582,11 @@ static void do_chat(const char *msg)
     claw_thread_delay_ms(300);
     claw_thread_delete(anim);
     printf("\r                              \r");
+
+    if (s_chat_cancel) {
+        /* User pressed Ctrl-C — discard result silently */
+        return;
+    }
 
     if (ret == CLAW_OK) {
         printf(CLR_GREEN "rt-claw> " CLR_RESET "%s\n", s_reply);

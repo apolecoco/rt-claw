@@ -22,6 +22,8 @@
 #include <string.h>
 #include <termios.h>
 #include <unistd.h>
+#include <sys/select.h>
+#include <sys/time.h>
 
 #define TAG         "shell"
 #define REPLY_SIZE  4096
@@ -196,10 +198,17 @@ static int shell_read_line(char *buf, int size)
             break;
         }
 
-        /* Ctrl-C / Ctrl-D */
-        if (ch == 3 || ch == 4) {
+        /* Ctrl-D — exit */
+        if (ch == 4) {
             g_exit_flag = 1;
             return -1;
+        }
+
+        /* Ctrl-C — cancel current line */
+        if (ch == 3) {
+            write(STDOUT_FILENO, "^C\r\n", 4);
+            buf[0] = '\0';
+            return -2;
         }
 
         /* Tab completion */
@@ -440,6 +449,7 @@ static void dispatch_command(char *line)
 
 static volatile int s_anim_active;
 static volatile int s_anim_phase;
+static volatile int s_chat_cancel;
 
 static void anim_thread_fn(void *arg)
 {
@@ -448,13 +458,38 @@ static void anim_thread_fn(void *arg)
     const char *dot_str[] = { ".", "..", "..." };
 
     while (s_anim_active && !claw_thread_should_exit()) {
+        /*
+         * Poll stdin for Ctrl-C (non-blocking).
+         * Raw mode is kept active during chat so we can
+         * detect single keystrokes.
+         */
+        if (s_raw_mode) {
+            unsigned char key;
+            struct timeval tv = { .tv_sec = 0, .tv_usec = 0 };
+            fd_set fds;
+            FD_ZERO(&fds);
+            FD_SET(STDIN_FILENO, &fds);
+            if (select(STDIN_FILENO + 1, &fds, NULL, NULL,
+                       &tv) > 0) {
+                if (read(STDIN_FILENO, &key, 1) == 1 &&
+                    key == 3) {
+                    s_chat_cancel = 1;
+                    s_anim_active = 0;
+                    printf("\r  ^C — cancelled"
+                           "                    \n");
+                    fflush(stdout);
+                    break;
+                }
+            }
+        }
+
         if (s_anim_phase == 0) {
             printf("\r  " CLR_MAGENTA "thinking %s"
                    CLR_RESET "   ", dot_str[dots]);
             fflush(stdout);
             dots = (dots + 1) % 3;
         }
-        claw_thread_delay_ms(500);
+        claw_thread_delay_ms(450);
     }
 }
 
@@ -477,14 +512,16 @@ static void do_chat(const char *msg)
 {
     s_anim_active = 1;
     s_anim_phase = 0;
+    s_chat_cancel = 0;
     ai_set_status_cb(chat_status_cb);
 
     struct claw_thread *anim = claw_thread_create("anim",
         anim_thread_fn, NULL, 2048, 20);
 
-    /* Temporarily restore cooked mode for AI output */
-    disable_raw_mode();
-
+    /*
+     * Keep raw mode active so the animation thread can poll
+     * stdin for Ctrl-C.  AI output still goes to stdout fine.
+     */
     int ret = ai_chat(msg, s_reply, REPLY_SIZE);
 
     s_anim_active = 0;
@@ -494,13 +531,15 @@ static void do_chat(const char *msg)
     }
     printf("\r                              \r");
 
+    if (s_chat_cancel) {
+        return;
+    }
+
     if (ret == CLAW_OK) {
         printf(CLR_GREEN "rt-claw> " CLR_RESET "%s\n", s_reply);
     } else {
         printf(CLR_RED "error> " CLR_RESET "%s\n", s_reply);
     }
-
-    enable_raw_mode();
 }
 
 /* ---- Public API ---- */
@@ -523,15 +562,34 @@ void linux_shell_loop(void)
     printf("  Direct input sends to AI, /command for system.\n");
     printf("\n");
 
+    struct timeval last_ctrlc = { 0, 0 };
+
     while (!g_exit_flag) {
         shell_history_reset_nav();
         printf("\n" CLR_CYAN "you> " CLR_RESET);
         fflush(stdout);
 
         int len = shell_read_line(input, sizeof(input));
-        if (len < 0) {
+        if (len == -1) {
+            /* Ctrl-D or EOF */
             break;
         }
+        if (len == -2) {
+            /* Ctrl-C — check for double-press within 1s */
+            struct timeval now;
+            gettimeofday(&now, NULL);
+            long elapsed_ms = (now.tv_sec - last_ctrlc.tv_sec) * 1000
+                + (now.tv_usec - last_ctrlc.tv_usec) / 1000;
+            if (last_ctrlc.tv_sec > 0 && elapsed_ms < 1000) {
+                printf("Interrupted.\n");
+                break;
+            }
+            last_ctrlc = now;
+            printf("(press Ctrl-C again to exit)\n");
+            continue;
+        }
+        last_ctrlc.tv_sec = 0;
+
         if (len == 0) {
             continue;
         }
