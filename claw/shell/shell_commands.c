@@ -285,7 +285,7 @@ static void cmd_memories(int argc, char **argv)
 #ifdef CONFIG_RTCLAW_SKILL_ENABLE
 #define SKILL_REPLY_SIZE 2048
 
-static void cmd_skill(int argc, char **argv)
+static void cmd_skills(int argc, char **argv)
 {
     if (argc < 2) {
         char buf[512];
@@ -438,7 +438,7 @@ const shell_cmd_t shell_common_commands[] = {
     SHELL_CMD("/forget",        cmd_forget,        "Delete a long-term memory"),
     SHELL_CMD("/memories",      cmd_memories,      "List long-term memories"),
 #ifdef CONFIG_RTCLAW_SKILL_ENABLE
-    SHELL_CMD("/skill",         cmd_skill,         "List or execute a skill"),
+    SHELL_CMD("/skills",        cmd_skills,        "List or execute a skill"),
 #endif
 #ifdef CONFIG_RTCLAW_SCHED_ENABLE
     SHELL_CMD("/task",          cmd_task,           "Tasks [rm <name>]"),
