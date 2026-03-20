@@ -60,6 +60,14 @@ help:
 	@echo "  make test-persist          KV persistence tests only"
 	@echo "  make test-online           AI connectivity tests only"
 	@echo ""
+	@echo "Tests (Linux functional — requires 'make build-linux'):"
+	@echo "  make test-linux            All Linux functional tests"
+	@echo "  make test-linux-boot       Linux boot/banner tests"
+	@echo "  make test-linux-shell      Linux shell command tests"
+	@echo "  make test-linux-kv         Linux KV persistence tests"
+	@echo "  make test-linux-signal     Linux signal handling tests"
+	@echo "  make test-smoke-linux      Build + run all Linux tests"
+	@echo ""
 	@echo "Tests (CI — profile switch + build + test):"
 	@echo "  make test-smoke-esp32c3    Smoke tests (ESP32-C3)"
 	@echo "  make test-smoke-esp32s3    Smoke tests (ESP32-S3)"
@@ -426,6 +434,33 @@ test-persist:
 .PHONY: test-online
 test-online:
 	$(FUNCTEST) -k TestAiOnline
+
+# --- Linux functional tests ---
+LINUX_FUNCTEST = python3 -m unittest discover -s tests/functional -p 'test_linux_*.py' -v
+
+.PHONY: test-linux
+test-linux:
+	$(LINUX_FUNCTEST)
+
+.PHONY: test-linux-boot
+test-linux-boot:
+	$(FUNCTEST) -k TestLinuxBoot
+
+.PHONY: test-linux-shell
+test-linux-shell:
+	$(FUNCTEST) -k TestLinuxShell
+
+.PHONY: test-linux-kv
+test-linux-kv:
+	$(FUNCTEST) -k TestLinuxKvPersistence
+
+.PHONY: test-linux-signal
+test-linux-signal:
+	$(FUNCTEST) -k TestLinuxSignal
+
+.PHONY: test-smoke-linux
+test-smoke-linux: build-linux
+	$(LINUX_FUNCTEST)
 
 # --- OTA development server ---
 
