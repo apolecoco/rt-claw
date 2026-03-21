@@ -147,9 +147,8 @@ scripts/install-hooks.sh
 ## Testing
 
 ```bash
-# Unit tests (cross-compiled, QEMU semihosting)
-make test-unit                         # vexpress-a9 (RT-Thread)
-make test-unit-zynq                    # zynq-a9 (FreeRTOS)
+# Unit tests (Linux native, no QEMU needed)
+make test-unit-linux                   # build + run all suites
 
 # Functional tests (Python unittest, QEMU boot/shell)
 make test-smoke-esp32c3                # ESP32-C3 smoke tests

@@ -49,9 +49,8 @@ help:
 	@echo "OTA:"
 	@echo "  make ota-server             Local OTA server (auto-detect firmware)"
 	@echo ""
-	@echo "Tests (unit — cross-compiled, QEMU semihosting):"
-	@echo "  make test-unit             Build + run unit tests (vexpress-a9)"
-	@echo "  make test-unit-zynq        Build + run unit tests (zynq-a9)"
+	@echo "Tests (unit — Linux native):"
+	@echo "  make test-unit-linux       Build + run unit tests (Linux)"
 	@echo ""
 	@echo "Tests (functional — requires pre-built firmware):"
 	@echo "  make test-functional       Run all functional tests"
@@ -146,10 +145,6 @@ run-zynq-a9-qemu: build-zynq-a9-qemu
 		-nic user,model=cadence_gem \
 		$(if $(filter 1,$(GDB)),-S -s)
 
-
-.PHONY: test-unit-zynq
-test-unit-zynq:
-	python3 tests/unit/run_zynq.py
 
 .PHONY: test-smoke-zynq
 test-smoke-zynq: build-zynq-a9-qemu
@@ -468,7 +463,11 @@ test-smoke-linux: build-linux
 ota-server:
 	python3 scripts/ota-server.py $(OTA_ARGS)
 
-# --- Unit tests (RT-Thread / vexpress-a9 / semihosting) ---
+# --- Unit tests ---
+
+.PHONY: test-unit-linux
+test-unit-linux: build-linux
+	$(MESON_BUILDDIR_LINUX)/platform/linux/rtclaw_test
 
 .PHONY: test-unit
 test-unit:

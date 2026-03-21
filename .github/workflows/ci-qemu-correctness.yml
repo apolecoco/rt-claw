@@ -68,11 +68,6 @@ jobs:
             qemu_tools: none
             make_target: test-smoke-zynq
             timeout: 15
-          - target: zynq-a9-unit
-            esp_targets: ""
-            qemu_tools: none
-            make_target: test-unit-zynq
-            timeout: 20
 
     steps:
       - uses: actions/checkout@v4

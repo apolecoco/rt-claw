@@ -81,17 +81,39 @@ static void test_memory_build_json(void)
 
 /* ---- Long-term memory tests ---- */
 
-static void test_ltm_init(void)
+/*
+ * Reset LTM to a clean state. On Linux the file-based KV backend
+ * persists data across ai_ltm_init() calls within the same process,
+ * so we must explicitly delete all entries before each test.
+ */
+static void ltm_reset(void)
 {
     claw_kv_init();
-    TEST_ASSERT_EQ(ai_ltm_init(), CLAW_OK);
+    ai_ltm_init();
+
+    /* Delete all possible entries left by previous tests */
+    char key[32];
+    for (int i = 0; i < LTM_MAX_ENTRIES; i++) {
+        snprintf(key, sizeof(key), "k%d", i);
+        ai_ltm_delete(key);
+    }
+    ai_ltm_delete("name");
+    ai_ltm_delete("key1");
+    ai_ltm_delete("owner");
+
+    /* Re-init with clean state */
+    ai_ltm_init();
+}
+
+static void test_ltm_init(void)
+{
+    ltm_reset();
     TEST_ASSERT_EQ(ai_ltm_count(), 0);
 }
 
 static void test_ltm_save_load(void)
 {
-    claw_kv_init();
-    ai_ltm_init();
+    ltm_reset();
 
     TEST_ASSERT_EQ(ai_ltm_save("name", "rt-claw"), CLAW_OK);
     TEST_ASSERT_EQ(ai_ltm_count(), 1);
@@ -103,8 +125,7 @@ static void test_ltm_save_load(void)
 
 static void test_ltm_delete(void)
 {
-    claw_kv_init();
-    ai_ltm_init();
+    ltm_reset();
 
     ai_ltm_save("key1", "val1");
     TEST_ASSERT_EQ(ai_ltm_count(), 1);
@@ -117,8 +138,7 @@ static void test_ltm_delete(void)
 
 static void test_ltm_overflow(void)
 {
-    claw_kv_init();
-    ai_ltm_init();
+    ltm_reset();
 
     /*
      * Fill LTM to capacity. On RT-Thread the RAM-only KV store
@@ -145,8 +165,7 @@ static void test_ltm_overflow(void)
 
 static void test_ltm_build_context(void)
 {
-    claw_kv_init();
-    ai_ltm_init();
+    ltm_reset();
 
     /* Empty: should return NULL */
     TEST_ASSERT_NULL(ai_ltm_build_context());

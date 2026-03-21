@@ -17,3 +17,16 @@ rtclaw_exe = executable('rtclaw',
     dependencies: [rtclaw_dep, osal_dep, cjson_dep, thread_dep],
     install: false,
 )
+
+# Unit test executable
+test_main_src = files('../../tests/unit/test_main_linux.c')
+test_incs = include_directories('../../tests/unit')
+
+rtclaw_test_exe = executable('rtclaw_test',
+    test_main_src,
+    include_directories: [claw_inc, claw_root_inc, test_incs],
+    c_args: platform_defs,
+    link_with: [unittest_lib],
+    dependencies: [rtclaw_dep, osal_dep, cjson_dep, thread_dep],
+    install: false,
+)
