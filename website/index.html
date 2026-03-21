@@ -1116,17 +1116,32 @@ async function resolveFirmware(platform, board, version, terminal) {
         return fileArray;
     }
 
-    /* Tag version: download zip from GitHub Release */
+    /* Tag version: download zip from GitHub Release via API
+     * (direct download URLs lack CORS headers, so we use the
+     * GitHub API asset endpoint which returns proper CORS) */
     terminal.writeLine('Source: ' + version + ' (GitHub Release)');
     var zipName = target + '-firmware.zip';
-    var zipUrl = 'https://github.com/' + GITHUB_REPO + '/releases/download/' + version + '/' + zipName;
+    var apiBase = 'https://api.github.com/repos/' + GITHUB_REPO;
     terminal.writeLine('Downloading ' + zipName + '...');
 
-    var zresp = await fetch(zipUrl);
-    if (!zresp.ok) throw new Error(
-        'Firmware zip not found for ' + target + ' ' + version + '.\n' +
-        'URL: ' + zipUrl
+    /* Find the asset ID from the release */
+    var relResp = await fetch(apiBase + '/releases/tags/' + version);
+    if (!relResp.ok) throw new Error(
+        'Release ' + version + ' not found.\n' +
+        'Check https://github.com/' + GITHUB_REPO + '/releases'
     );
+    var relData = await relResp.json();
+    var asset = relData.assets.find(function(a) { return a.name === zipName; });
+    if (!asset) throw new Error(
+        'Firmware zip not found for ' + target + ' ' + version + '.\n' +
+        'Available: ' + relData.assets.map(function(a) { return a.name; }).join(', ')
+    );
+
+    /* Download via API asset endpoint (CORS-safe) */
+    var zresp = await fetch(apiBase + '/releases/assets/' + asset.id, {
+        headers: { 'Accept': 'application/octet-stream' }
+    });
+    if (!zresp.ok) throw new Error('Failed to download ' + zipName);
 
     var zipData = await zresp.arrayBuffer();
     var zip = await JSZip.loadAsync(zipData);
