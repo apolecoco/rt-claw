@@ -43,6 +43,13 @@ CONFIG_RTCLAW_TOOL_LCD=y
 CONFIG_RTCLAW_TOOL_SCHED=y
 CONFIG_RTCLAW_TOOL_NET=y
 
+# ---- WiFi provisioning off (QEMU uses Ethernet, not WiFi) ----
+# Note: CONFIG_ESP_WIFI_ENABLED cannot be disabled — it is a hidden
+# auto-set Kconfig flag based on SOC_WIFI_SUPPORTED (always y for
+# ESP32-C3/S3). wifi_board.c and wifi_manager.c compile for QEMU
+# but are never called (QEMU board.c is a no-op).
+# CONFIG_RTCLAW_WIFI_PROVISION_ENABLE is not set
+
 # ---- Feishu off ----
 # CONFIG_RTCLAW_FEISHU_ENABLE is not set
 

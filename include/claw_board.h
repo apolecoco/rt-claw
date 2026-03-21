@@ -28,6 +28,14 @@ const shell_cmd_t *board_platform_commands(int *count);
  */
 void wifi_board_early_init(void);
 const shell_cmd_t *wifi_board_platform_commands(int *count);
+
+#ifdef CONFIG_RTCLAW_WIFI_PROVISION_ENABLE
+#include <stdbool.h>
+#include "esp_err.h"
+esp_err_t wifi_provision_start(void);
+esp_err_t wifi_provision_stop(void);
+bool wifi_provision_is_active(void);
+#endif
 #endif
 
 #endif /* CLAW_BOARD_H */

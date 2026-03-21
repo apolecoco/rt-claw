@@ -15,6 +15,12 @@ if(CONFIG_ESP_WIFI_ENABLED)
         "${PROJECT_ROOT}/platform/common/espressif/wifi_board.c"
         "${PROJECT_ROOT}/drivers/net/espressif/wifi_manager.c")
     list(APPEND MAIN_REQUIRES esp_wifi esp_netif nvs_flash)
+
+    if(CONFIG_RTCLAW_WIFI_PROVISION_ENABLE)
+        list(APPEND MAIN_SRCS
+            "${PROJECT_ROOT}/platform/common/espressif/wifi_provision.c")
+        list(APPEND MAIN_REQUIRES esp_http_server)
+    endif()
 endif()
 
 idf_component_register(

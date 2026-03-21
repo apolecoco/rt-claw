@@ -19,6 +19,14 @@ menu "rt-claw Configuration"
                 Build-time WiFi password. Can be overridden at runtime
                 via /wifi_set shell command (saved to NVS).
 
+        config RTCLAW_WIFI_PROVISION_ENABLE
+            bool "Enable WiFi provisioning (AP + Web portal)"
+            default y
+            help
+                Start a SoftAP hotspot with captive portal when no WiFi
+                credentials are configured or STA connection fails.
+                Users can configure WiFi and API keys via a web page.
+
     endmenu
 
     menu "Module Selection"

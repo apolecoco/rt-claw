@@ -25,7 +25,7 @@ set(CLAW_REQUIRES
 # Unconditional: ESP-IDF processes component REQUIRES before sdkconfig
 # is available, so CONFIG_* conditionals cannot gate REQUIRES here.
 # These components always exist; unused ones add only include paths.
-list(APPEND CLAW_REQUIRES esp_eth esp_wifi esp_lcd app_update)
+list(APPEND CLAW_REQUIRES esp_eth esp_wifi esp_lcd app_update esp_http_server)
 
 # Stub source so the component produces a real static library
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/rt_claw_stub.c" "/* auto-generated */\n")
