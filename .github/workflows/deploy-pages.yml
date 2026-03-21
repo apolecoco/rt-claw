@@ -57,6 +57,27 @@ jobs:
           path: website/firmware/esp32s3-default/
           if_no_artifact_found: warn
 
+      - name: Download release firmware to Pages
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for tag in $(gh release list --limit 5 --json tagName --jq '.[].tagName'); do
+            echo "Processing release $tag..."
+            for asset in $(gh release view "$tag" --json assets --jq '.assets[].name'); do
+              case "$asset" in
+                *-firmware.zip)
+                  target="${asset%-firmware.zip}"
+                  dir="website/firmware/$target/$tag"
+                  mkdir -p "$dir"
+                  echo "  Downloading $asset -> $dir/"
+                  gh release download "$tag" -p "$asset" -D /tmp
+                  unzip -o "/tmp/$asset" -d "$dir"
+                  rm -f "/tmp/$asset"
+                  ;;
+              esac
+            done
+          done
+
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3

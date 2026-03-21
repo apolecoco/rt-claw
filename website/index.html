@@ -1116,52 +1116,30 @@ async function resolveFirmware(platform, board, version, terminal) {
         return fileArray;
     }
 
-    /* Tag version: download zip from GitHub Release via API
-     * (direct download URLs lack CORS headers, so we use the
-     * GitHub API asset endpoint which returns proper CORS) */
+    /*
+     * Tag version: firmware is deployed to GitHub Pages by CI
+     * at firmware/<target>/<version>/
+     */
     terminal.writeLine('Source: ' + version + ' (GitHub Release)');
-    var zipName = target + '-firmware.zip';
-    var apiBase = 'https://api.github.com/repos/' + GITHUB_REPO;
-    terminal.writeLine('Downloading ' + zipName + '...');
-
-    /* Find the asset ID from the release */
-    var relResp = await fetch(apiBase + '/releases/tags/' + version);
-    if (!relResp.ok) throw new Error(
-        'Release ' + version + ' not found.\n' +
-        'Check https://github.com/' + GITHUB_REPO + '/releases'
+    var tagBase = 'firmware/' + target + '/' + version + '/';
+    var mresp = await fetch(tagBase + 'manifest.json');
+    if (!mresp.ok) throw new Error(
+        'Firmware not available for ' + target + ' ' + version + '.\n' +
+        'The release may still be building. Try again in a few minutes.'
     );
-    var relData = await relResp.json();
-    var asset = relData.assets.find(function(a) { return a.name === zipName; });
-    if (!asset) throw new Error(
-        'Firmware zip not found for ' + target + ' ' + version + '.\n' +
-        'Available: ' + relData.assets.map(function(a) { return a.name; }).join(', ')
-    );
-
-    /* Download via API asset endpoint (CORS-safe) */
-    var zresp = await fetch(apiBase + '/releases/assets/' + asset.id, {
-        headers: { 'Accept': 'application/octet-stream' }
-    });
-    if (!zresp.ok) throw new Error('Failed to download ' + zipName);
-
-    var zipData = await zresp.arrayBuffer();
-    var zip = await JSZip.loadAsync(zipData);
-
-    var manifestFile = zip.file('manifest.json');
-    if (!manifestFile) throw new Error('manifest.json not found in zip');
-    var manifest = JSON.parse(await manifestFile.async('string'));
+    var manifest = await mresp.json();
     var build = manifest.builds[0];
     var fileArray = [];
-
-    for (var k = 0; k < build.parts.length; k++) {
-        var part = build.parts[k];
-        var binFile = zip.file(part.path);
-        if (!binFile) throw new Error(part.path + ' not found in zip');
-        terminal.writeLine('Extracting ' + part.path + '...');
-        var binData = await binFile.async('uint8array');
+    for (var i = 0; i < build.parts.length; i++) {
+        var part = build.parts[i];
+        terminal.writeLine('Downloading ' + part.path + '...');
+        var presp = await fetch(tagBase + part.path);
+        if (!presp.ok) throw new Error('Failed to download ' + part.path);
+        var data = new Uint8Array(await presp.arrayBuffer());
         var bstr = '';
-        for (var m = 0; m < binData.length; m++) bstr += String.fromCharCode(binData[m]);
+        for (var j = 0; j < data.length; j++) bstr += String.fromCharCode(data[j]);
         fileArray.push({ data: bstr, address: part.offset });
-        terminal.writeLine('  ' + part.path + ': ' + binData.length + ' bytes @ 0x' + part.offset.toString(16));
+        terminal.writeLine('  ' + part.path + ': ' + data.length + ' bytes @ 0x' + part.offset.toString(16));
     }
     return fileArray;
 }
