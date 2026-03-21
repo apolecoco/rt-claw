@@ -468,7 +468,11 @@ test-smoke-linux: build-linux
 ota-server:
 	python3 scripts/ota-server.py $(OTA_ARGS)
 
-# --- Unit tests (RT-Thread / vexpress-a9 / semihosting) ---
+# --- Unit tests ---
+
+.PHONY: test-unit-linux
+test-unit-linux: build-linux
+	$(MESON_BUILDDIR_LINUX)/platform/linux/rtclaw_test
 
 .PHONY: test-unit
 test-unit:
