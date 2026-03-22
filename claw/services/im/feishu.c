@@ -496,7 +496,7 @@ static int refresh_token(struct feishu_ctx *ctx)
         return CLAW_NOMEM;
     }
 
-    char body[256];
+    char body[320];
     snprintf(body, sizeof(body),
              "{\"app_id\":\"%s\",\"app_secret\":\"%s\"}",
              ctx->app_id, ctx->app_secret);
@@ -1063,7 +1063,7 @@ static int connect_ws(struct feishu_ctx *ctx)
         return CLAW_NOMEM;
     }
 
-    char body[256];
+    char body[320];
     snprintf(body, sizeof(body),
              "{\"AppID\":\"%s\",\"AppSecret\":\"%s\"}",
              ctx->app_id, ctx->app_secret);
