@@ -29,12 +29,12 @@
 
 #include <string.h>
 #include <stdio.h>
-#include <inttypes.h>
 
 #define TAG "telegram"
 
 #ifdef CONFIG_RTCLAW_TELEGRAM_ENABLE
 
+#include <inttypes.h>
 #include "osal/claw_net.h"
 #include "cJSON.h"
 

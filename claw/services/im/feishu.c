@@ -979,6 +979,7 @@ static int ws_send_bin(struct feishu_ctx *ctx,
     return CLAW_OK;
 }
 
+#if defined(CLAW_PLATFORM_ESP_IDF) || defined(CLAW_PLATFORM_LINUX)
 /* Handle a received WebSocket frame (called from event/poll) */
 static void ws_handle_frame(struct feishu_ctx *ctx,
                             const uint8_t *data, size_t len,
@@ -1013,6 +1014,7 @@ static void ws_handle_frame(struct feishu_ctx *ctx,
         process_event_payload(ctx, data, len);
     }
 }
+#endif /* CLAW_PLATFORM_ESP_IDF || CLAW_PLATFORM_LINUX */
 
 /* ------------------------------------------------------------------ */
 /*  WebSocket event handler (platform-specific)                        */
