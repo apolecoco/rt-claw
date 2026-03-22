@@ -6,7 +6,7 @@
  * (devkit, xiaozhi-xmini, etc.). Provides WiFi init and shell commands.
  */
 
-#include "claw_board.h"
+#include "platform/board.h"
 #include "drivers/net/espressif/wifi_manager.h"
 #include "osal/claw_os.h"
 

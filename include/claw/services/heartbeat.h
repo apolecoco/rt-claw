@@ -7,8 +7,8 @@
  * otherwise summarizes and pushes to the user via IM or console.
  */
 
-#ifndef CLAW_CORE_HEARTBEAT_H
-#define CLAW_CORE_HEARTBEAT_H
+#ifndef CLAW_SERVICES_HEARTBEAT_H
+#define CLAW_SERVICES_HEARTBEAT_H
 
 #include "osal/claw_os.h"
 
@@ -45,4 +45,4 @@ void heartbeat_set_reply(heartbeat_reply_fn_t fn,
  */
 int heartbeat_llm_online(void);
 
-#endif /* CLAW_CORE_HEARTBEAT_H */
+#endif /* CLAW_SERVICES_HEARTBEAT_H */

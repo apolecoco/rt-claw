@@ -5,7 +5,7 @@
  * Board abstraction for Linux native platform.
  */
 
-#include "claw_board.h"
+#include "platform/board.h"
 
 void board_early_init(void)
 {

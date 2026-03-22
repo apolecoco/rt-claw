@@ -7,9 +7,9 @@
 
 #include "osal/claw_os.h"
 #include "osal/claw_kv.h"
-#include "claw/claw_init.h"
+#include "claw/init.h"
 #include "claw/shell/shell_commands.h"
-#include "claw_board.h"
+#include "platform/board.h"
 
 #ifdef CLAW_PLATFORM_ESP_IDF
 #include "esp_log.h"

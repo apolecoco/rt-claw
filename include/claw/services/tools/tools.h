@@ -9,8 +9,8 @@
  * lookup and JSON export iterate the OOP registry.
  */
 
-#ifndef CLAW_TOOLS_H
-#define CLAW_TOOLS_H
+#ifndef CLAW_SERVICES_TOOLS_H
+#define CLAW_SERVICES_TOOLS_H
 
 #include "osal/claw_os.h"
 #include "claw/core/tool.h"
@@ -91,4 +91,4 @@ void claw_lcd_status(const char *msg);
  */
 void claw_lcd_progress(int percent);
 
-#endif /* CLAW_TOOLS_H */
+#endif /* CLAW_SERVICES_TOOLS_H */

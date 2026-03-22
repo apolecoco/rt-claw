@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 
-#include "claw_board.h"
+#include "platform/board.h"
 
 void board_early_init(void)
 {

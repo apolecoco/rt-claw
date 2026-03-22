@@ -14,7 +14,7 @@
 #include "claw/shell/shell_commands.h"
 #include "claw/services/ai/ai_engine.h"
 #include "claw/services/ai/ai_memory.h"
-#include "claw/tools/claw_tools.h"
+#include "claw/services/tools/tools.h"
 #include "utils/list.h"
 #include "claw/services/im/feishu.h"
 #include "claw/services/im/telegram.h"
@@ -24,7 +24,7 @@
 #include "claw/services/ai/ai_skill.h"
 #endif
 #ifdef CONFIG_RTCLAW_SCHED_ENABLE
-#include "claw/core/scheduler.h"
+#include "claw/services/sched.h"
 #endif
 #ifdef CONFIG_RTCLAW_SWARM_ENABLE
 #include "claw/services/swarm/swarm.h"

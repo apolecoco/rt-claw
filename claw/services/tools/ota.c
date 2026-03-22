@@ -5,8 +5,8 @@
  * OTA tools — AI can check, trigger, and manage firmware updates.
  */
 
-#include "claw/tools/claw_tools.h"
-#include "claw_ota.h"
+#include "claw/services/tools/tools.h"
+#include "platform/ota.h"
 #include "claw/services/ota/ota_service.h"
 
 #include <stdio.h>

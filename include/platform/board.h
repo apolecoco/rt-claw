@@ -6,8 +6,8 @@
  * Each platform/board variant provides its own implementation.
  */
 
-#ifndef CLAW_BOARD_H
-#define CLAW_BOARD_H
+#ifndef PLATFORM_BOARD_H
+#define PLATFORM_BOARD_H
 
 #include "claw/shell/shell_commands.h"
 
@@ -38,4 +38,4 @@ bool wifi_provision_is_active(void);
 #endif
 #endif
 
-#endif /* CLAW_BOARD_H */
+#endif /* PLATFORM_BOARD_H */

@@ -7,7 +7,7 @@
  * lookup, counting, and JSON export for the AI / shell layer.
  */
 
-#include "claw/tools/claw_tools.h"
+#include "claw/services/tools/tools.h"
 #include "claw_config.h"
 
 #include <string.h>

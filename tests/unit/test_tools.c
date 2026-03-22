@@ -4,7 +4,7 @@
  */
 
 #include "framework/test.h"
-#include "claw/tools/claw_tools.h"
+#include "claw/services/tools/tools.h"
 #include "cJSON.h"
 
 #include <string.h>

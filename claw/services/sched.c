@@ -7,7 +7,7 @@
 
 #include "osal/claw_os.h"
 #include "claw_config.h"
-#include "claw/core/scheduler.h"
+#include "claw/services/sched.h"
 #include "claw/core/console.h"
 #include "utils/list.h"
 

@@ -5,7 +5,7 @@
  * QEMU virtual board — network via OpenCores Ethernet (sdkconfig).
  */
 
-#include "claw_board.h"
+#include "platform/board.h"
 #include <stddef.h>
 
 void board_early_init(void)

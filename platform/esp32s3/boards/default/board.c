@@ -5,7 +5,7 @@
  * ESP32-S3 default board — WiFi + PSRAM real hardware.
  */
 
-#include "claw_board.h"
+#include "platform/board.h"
 
 void board_early_init(void)
 {

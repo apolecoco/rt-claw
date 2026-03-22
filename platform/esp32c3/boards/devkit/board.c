@@ -5,7 +5,7 @@
  * ESP32-C3 DevKit board — WiFi initialization via shared wifi_board.
  */
 
-#include "claw_board.h"
+#include "platform/board.h"
 
 void board_early_init(void)
 {

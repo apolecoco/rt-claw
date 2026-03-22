@@ -9,8 +9,8 @@
  * flash operations.  This follows the same pattern as claw_board.h.
  */
 
-#ifndef CLAW_OTA_H
-#define CLAW_OTA_H
+#ifndef PLATFORM_OTA_H
+#define PLATFORM_OTA_H
 
 #include <stdint.h>
 #include <stddef.h>
@@ -84,4 +84,4 @@ int claw_ota_supported(void);
 }
 #endif
 
-#endif /* CLAW_OTA_H */
+#endif /* PLATFORM_OTA_H */

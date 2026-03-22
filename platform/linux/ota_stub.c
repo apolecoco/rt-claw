@@ -6,7 +6,7 @@
  * Unit tests and real implementations may override these.
  */
 
-#include "claw_ota.h"
+#include "platform/ota.h"
 #include "claw_config.h"
 #include "osal/claw_os.h"
 

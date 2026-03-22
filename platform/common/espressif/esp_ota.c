@@ -7,7 +7,7 @@
  */
 
 #include "osal/claw_os.h"
-#include "claw_ota.h"
+#include "platform/ota.h"
 
 #include "esp_ota_ops.h"
 #include "esp_app_format.h"

@@ -1,12 +1,12 @@
 src_files = files(
-    'claw_init.c',
+    'init.c',
     'core/errno.c',
     'core/console.c',
-    'core/service_core.c',
-    'core/driver_core.c',
-    'core/tool_core.c',
-    'core/gateway.c',
-    'core/scheduler.c',
+    'core/service.c',
+    'core/driver.c',
+    'core/tool.c',
+    'services/gateway.c',
+    'services/sched.c',
     'services/ai/ai_engine.c',
     'services/ai/ai_memory.c',
     'services/ai/ai_skill.c',
@@ -17,14 +17,14 @@ src_files = files(
     'services/swarm/swarm.c',
     'shell/shell_commands.c',
     'shell/shell_history.c',
-    'tools/claw_tools.c',
-    'tools/tool_gpio.c',
-    'tools/tool_lcd.c',
-    'tools/tool_sched.c',
-    'tools/tool_system.c',
-    'tools/tool_net.c',
-    'tools/tool_audio.c',
-    'tools/tool_mouse.c',
+    'services/tools/tools.c',
+    'services/tools/gpio.c',
+    'services/tools/lcd.c',
+    'services/tools/sched.c',
+    'services/tools/system.c',
+    'services/tools/net.c',
+    'services/tools/audio.c',
+    'services/tools/mouse.c',
 )
 
 # Drivers (outside claw/ directory)
@@ -66,7 +66,7 @@ if get_option('heartbeat')
         error('heartbeat requires sched=true')
     endif
     feature_defs += '-DCONFIG_RTCLAW_HEARTBEAT_ENABLE'
-    src_files += files('core/heartbeat.c')
+    src_files += files('services/heartbeat.c')
 endif
 if get_option('feishu')
     feature_defs += '-DCONFIG_RTCLAW_FEISHU_ENABLE'
@@ -82,7 +82,7 @@ endif
 # Kconfig (sdkconfig → cross.ini), on RT-Thread from Meson -Dota=true.
 src_files += files(
     'services/ota/ota_service.c',
-    'tools/tool_ota.c',
+    'services/tools/ota.c',
 )
 # Non-ESP, non-Linux platforms need an OTA platform stub when ota is
 # enabled.  Linux provides its own in platform/linux/meson.build;

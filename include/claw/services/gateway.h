@@ -5,8 +5,8 @@
  * Gateway — message routing with pipeline processing and service registry.
  */
 
-#ifndef CLAW_CORE_GATEWAY_H
-#define CLAW_CORE_GATEWAY_H
+#ifndef CLAW_SERVICES_GATEWAY_H
+#define CLAW_SERVICES_GATEWAY_H
 
 #include "osal/claw_os.h"
 #include "claw_config.h"
@@ -95,4 +95,4 @@ int gateway_register_handler(const char *name, gw_handler_fn process);
 int gateway_register_service(const char *name, uint8_t type_mask,
                              struct claw_mq *inbox);
 
-#endif /* CLAW_CORE_GATEWAY_H */
+#endif /* CLAW_SERVICES_GATEWAY_H */

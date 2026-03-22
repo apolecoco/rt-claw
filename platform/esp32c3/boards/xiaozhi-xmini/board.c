@@ -11,12 +11,12 @@
  */
 
 #include "claw_config.h"
-#include "claw_board.h"
+#include "platform/board.h"
 #include "drivers/display/espressif/ssd1306_oled.h"
 #ifdef CONFIG_RTCLAW_AUDIO_ENABLE
 #include "drivers/audio/espressif/es8311_audio.h"
 #endif
-#include "claw/tools/claw_tools.h"
+#include "claw/services/tools/tools.h"
 
 #ifdef CLAW_PLATFORM_ESP_IDF
 #include "driver/i2c_master.h"

@@ -4,7 +4,7 @@
  */
 
 #include "framework/test.h"
-#include "claw/core/gateway.h"
+#include "claw/services/gateway.h"
 
 static void test_gateway_init(void)
 {

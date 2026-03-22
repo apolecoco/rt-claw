@@ -247,7 +247,7 @@ void net_print_ipinfo(void)
 
 #elif defined(CLAW_PLATFORM_RTTHREAD)
 
-#include "claw/platform_net.h"
+#include "platform/net.h"
 
 #include <stdio.h>
 #include <rtthread.h>

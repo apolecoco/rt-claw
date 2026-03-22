@@ -5,10 +5,10 @@
  * Platform hooks for RT-Thread network bring-up.
  */
 
-#ifndef CLAW_PLATFORM_NET_H
-#define CLAW_PLATFORM_NET_H
+#ifndef PLATFORM_NET_H
+#define PLATFORM_NET_H
 
 const char *claw_platform_net_device_name(void);
 void claw_platform_net_prepare(void);
 
-#endif /* CLAW_PLATFORM_NET_H */
+#endif /* PLATFORM_NET_H */

@@ -10,12 +10,12 @@
 #include "claw_config.h"
 #include "osal/claw_net.h"
 #include "claw/services/swarm/swarm.h"
-#include "claw/tools/claw_tools.h"
+#include "claw/services/tools/tools.h"
 #include "claw/core/console.h"
 #include "claw/core/service.h"
 #include "utils/list.h"
 #ifdef CONFIG_RTCLAW_HEARTBEAT_ENABLE
-#include "claw/core/heartbeat.h"
+#include "claw/services/heartbeat.h"
 #endif
 
 #include <string.h>

@@ -5,7 +5,7 @@
  * Audio tools — beep, play sound, volume control.
  */
 
-#include "claw/tools/claw_tools.h"
+#include "claw/services/tools/tools.h"
 #include "claw/services/swarm/swarm.h"
 
 #include <stdio.h>

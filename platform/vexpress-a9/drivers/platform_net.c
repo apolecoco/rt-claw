@@ -5,7 +5,7 @@
  * vexpress-a9 network hooks for rt-claw.
  */
 
-#include "claw/platform_net.h"
+#include "platform/net.h"
 
 #include "drv_smc911x.h"
 

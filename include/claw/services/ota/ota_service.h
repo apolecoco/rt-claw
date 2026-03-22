@@ -8,7 +8,7 @@
 #ifndef CLAW_OTA_SERVICE_H
 #define CLAW_OTA_SERVICE_H
 
-#include "claw_ota.h"
+#include "platform/ota.h"
 
 #ifdef __cplusplus
 extern "C" {

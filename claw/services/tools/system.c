@@ -5,7 +5,7 @@
  * System tools — chip info, memory, uptime, restart.
  */
 
-#include "claw/tools/claw_tools.h"
+#include "claw/services/tools/tools.h"
 #include "claw_config.h"
 #include "claw/services/ai/ai_memory.h"
 

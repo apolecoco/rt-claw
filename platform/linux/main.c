@@ -10,7 +10,7 @@
 
 #include "osal/claw_os.h"
 #include "osal/claw_kv.h"
-#include "claw_board.h"
+#include "platform/board.h"
 #include "claw/shell/shell_commands.h"
 
 extern int claw_init(void);

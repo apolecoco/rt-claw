@@ -15,7 +15,7 @@
 #include "claw/services/ai/ai_engine.h"
 #include "claw/shell/shell_commands.h"
 #include "claw/shell/shell_history.h"
-#include "claw_board.h"
+#include "platform/board.h"
 #include "drivers/serial/espressif/console.h"
 
 #ifdef CONFIG_RTCLAW_SKILL_ENABLE

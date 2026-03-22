@@ -10,7 +10,7 @@
 #include "osal/claw_net.h"
 #include "claw/core/service.h"
 #include "claw_config.h"
-#include "claw_ota.h"
+#include "platform/ota.h"
 #include "claw/services/ota/ota_service.h"
 #include "utils/list.h"
 

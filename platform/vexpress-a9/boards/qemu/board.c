@@ -5,7 +5,7 @@
  * QEMU vexpress-a9 board — network via SMC911x Ethernet.
  */
 
-#include "claw_board.h"
+#include "platform/board.h"
 #include <stddef.h>
 
 void board_early_init(void)

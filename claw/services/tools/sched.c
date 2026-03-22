@@ -10,8 +10,8 @@
  */
 
 #include "osal/claw_os.h"
-#include "claw/tools/claw_tools.h"
-#include "claw/core/scheduler.h"
+#include "claw/services/tools/tools.h"
+#include "claw/services/sched.h"
 #include "claw/services/ai/ai_engine.h"
 
 #include <string.h>

@@ -12,8 +12,8 @@
 #include "tests/unit/test_runner.h"
 #include "tests/unit/framework/semihosting.h"
 #else
-#include "claw/claw_init.h"
-#include "claw_board.h"
+#include "claw/init.h"
+#include "platform/board.h"
 #endif
 
 int main(void)

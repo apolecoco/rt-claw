@@ -26,7 +26,7 @@
 #include "claw/services/ai/ai_skill.h"
 #include "claw/shell/shell_cmd.h"
 #include "claw/shell/shell_commands.h"
-#include "claw/tools/claw_tools.h"
+#include "claw/services/tools/tools.h"
 
 #include <string.h>
 #include <stdio.h>

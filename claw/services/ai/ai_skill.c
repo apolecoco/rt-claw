@@ -12,7 +12,7 @@
 #include "claw/core/console.h"
 #include "claw/services/ai/ai_skill.h"
 #include "claw/services/ai/ai_engine.h"
-#include "claw/tools/claw_tools.h"
+#include "claw/services/tools/tools.h"
 #include "cJSON.h"
 
 #include <string.h>

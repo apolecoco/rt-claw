@@ -11,11 +11,10 @@
 
 #ifdef CONFIG_RTCLAW_OTA_ENABLE
 
-#include "claw_ota.h"
+#include "platform/ota.h"
 #include "claw/services/ota/ota_service.h"
 #include "claw/core/tool.h"
-#include "claw/tools/claw_tools.h"
-#include "claw/tools/claw_tools.h"
+#include "claw/services/tools/tools.h"
 
 #include <string.h>
 
