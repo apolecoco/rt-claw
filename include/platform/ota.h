@@ -6,7 +6,7 @@
  *
  * Each platform provides its own implementation of these functions.
  * The OTA service (claw/services/ota/) calls them for the actual
- * flash operations.  This follows the same pattern as claw_board.h.
+ * flash operations.  This follows the same pattern as platform/board.h.
  */
 
 #ifndef PLATFORM_OTA_H

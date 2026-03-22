@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: MIT
- * Unit tests for claw/core/gateway.c
+ * Unit tests for claw/services/gateway.c
  */
 
 #include "framework/test.h"

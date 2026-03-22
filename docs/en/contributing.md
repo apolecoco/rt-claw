@@ -34,19 +34,19 @@ Signed-off-by: Your Name <your@email.com>
 | Prefix     | Scope                                     |
 |------------|-------------------------------------------|
 | `osal`     | OS abstraction layer (`osal/`)            |
-| `gateway`  | Message routing (`claw/core/gateway.*`)   |
+| `gateway`  | Message routing (`claw/services/gateway.*`)   |
 | `swarm`    | Swarm service (`claw/services/swarm/`)    |
 | `net`      | Network service (`claw/services/net/`)    |
 | `ai`       | AI engine (`claw/services/ai/`)           |
-| `sched`    | Scheduler (`claw/core/scheduler.*`)       |
+| `sched`    | Scheduler (`claw/services/sched.*`)       |
 | `feishu`   | Feishu IM integration (`claw/services/im/`) |
 | `drivers`  | Hardware drivers (`drivers/`)             |
 | `platform` | Platform-specific changes (`platform/`)   |
 | `build`    | Build system (Meson, CMake, SCons)        |
 | `docs`     | Documentation changes                     |
-| `tools`    | Tool Use framework (`claw/tools/`)        |
+| `tools`    | Tool Use framework (`claw/services/tools/`)        |
 | `scripts`  | Build/CI scripts (`scripts/`)             |
-| `main`     | Boot entry and init (`claw/claw_init.*`)  |
+| `main`     | Boot entry and init (`claw/init.*`)  |
 | `claw`     | Cross-cutting core changes                |
 | `ci`       | CI workflow changes (`.github/`)          |
 | `tests`    | Test scripts (`tests/`)                   |
@@ -97,7 +97,7 @@ scripts/check-patch.sh
 scripts/check-patch.sh --staged
 
 # Check specific files
-scripts/check-patch.sh --file claw/core/gateway.c
+scripts/check-patch.sh --file claw/services/gateway.c
 ```
 
 ### Sign-off Checker

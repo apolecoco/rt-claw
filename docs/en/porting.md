@@ -70,7 +70,7 @@ platform/<name>/
 `main.c` minimal:
 
 ```c
-#include "claw/claw_init.h"
+#include "claw/init.h"
 
 int main(void)
 {
@@ -82,7 +82,7 @@ int main(void)
 
 #### 4. Board Abstraction (Optional)
 
-Implement `include/claw_board.h`:
+Implement `include/platform/board.h`:
 
 ```c
 void board_early_init(void);  /* WiFi/GPIO init before claw_init */
@@ -154,10 +154,10 @@ Tools are LLM-callable functions registered at startup.
 
 ### 1. Create Source File
 
-`claw/tools/tool_<name>.c`:
+`claw/services/tools/<name>.c`:
 
 ```c
-#include "claw/tools/claw_tools.h"
+#include "claw/services/tools/tools.h"
 #include "claw_config.h"
 
 static claw_err_t my_tool_execute(struct claw_tool *tool,

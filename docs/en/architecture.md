@@ -64,7 +64,7 @@ claw/*.c  --->  #include "osal/claw_os.h"
 
 ## Core Services
 
-### Gateway (`claw/core/gateway.c`)
+### Gateway (`claw/services/gateway.c`)
 
 Message routing hub with pipeline handler chain and service registry.
 Incoming messages pass through registered handlers (netfilter-style hooks)
@@ -74,7 +74,7 @@ type_mask bitmap. Message types: DATA, CMD, EVENT, SWARM, AI_REQ.
 Queue: 16 messages x 256 bytes. Dedicated thread at priority 15.
 Built-in statistics: total/per-type/dropped/no-consumer/filtered counts.
 
-### Scheduler (`claw/core/scheduler.c`)
+### Scheduler (`claw/services/sched.c`)
 
 Timer-driven task execution with 1-second tick resolution. Supports up to
 8 concurrent tasks (one-shot and repeating). AI can create, list, and
@@ -83,7 +83,7 @@ A dedicated AI worker thread processes scheduled AI tasks with round-robin
 pending queue -- tasks that arrive while the worker is busy are queued and
 executed in turn, preventing task starvation.
 
-### Heartbeat (`claw/core/heartbeat.c`)
+### Heartbeat (`claw/services/heartbeat.c`)
 
 Optional periodic AI check-in every 5 minutes. Three-layer tick logic:
 (1) events pending -- AI summary via `ai_chat_raw()`;

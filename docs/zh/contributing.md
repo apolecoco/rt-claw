@@ -34,19 +34,19 @@ Signed-off-by: Your Name <your@email.com>
 | 前缀       | 范围                                      |
 |------------|-------------------------------------------|
 | `osal`     | 操作系统抽象层（`osal/`）                 |
-| `gateway`  | 消息路由（`claw/core/gateway.*`）         |
+| `gateway`  | 消息路由（`claw/services/gateway.*`）         |
 | `swarm`    | 蜂群服务（`claw/services/swarm/`）        |
 | `net`      | 网络服务（`claw/services/net/`）          |
 | `ai`       | AI 引擎（`claw/services/ai/`）           |
-| `sched`    | 调度器（`claw/core/scheduler.*`）         |
+| `sched`    | 调度器（`claw/services/sched.*`）         |
 | `feishu`   | 飞书 IM 集成（`claw/services/im/`）      |
 | `drivers`  | 硬件驱动（`drivers/`）                    |
 | `platform` | 平台特定变更（`platform/`）               |
 | `build`    | 构建系统（Meson、CMake、SCons）           |
 | `docs`     | 文档变更                                  |
-| `tools`    | Tool Use 框架（`claw/tools/`）            |
+| `tools`    | Tool Use 框架（`claw/services/tools/`）            |
 | `scripts`  | 构建/CI 脚本（`scripts/`）               |
-| `main`     | 启动入口和初始化（`claw/claw_init.*`）    |
+| `main`     | 启动入口和初始化（`claw/init.*`）    |
 | `claw`     | 跨模块核心变更                            |
 | `ci`       | CI 工作流变更（`.github/`）              |
 | `tests`    | 测试脚本（`tests/`）                      |
@@ -97,7 +97,7 @@ scripts/check-patch.sh
 scripts/check-patch.sh --staged
 
 # 检查指定文件
-scripts/check-patch.sh --file claw/core/gateway.c
+scripts/check-patch.sh --file claw/services/gateway.c
 ```
 
 ### 签名检查

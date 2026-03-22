@@ -68,7 +68,7 @@ platform/<name>/
 `main.c` 最小示例：
 
 ```c
-#include "claw/claw_init.h"
+#include "claw/init.h"
 
 int main(void)
 {
@@ -80,7 +80,7 @@ int main(void)
 
 #### 4. 板级抽象（可选）
 
-实现 `include/claw_board.h`：
+实现 `include/platform/board.h`：
 
 ```c
 void board_early_init(void);  /* WiFi/GPIO init before claw_init */
@@ -151,10 +151,10 @@ platform/zynq-a9/
 
 ### 1. 创建源文件
 
-`claw/tools/tool_<name>.c`：
+`claw/services/tools/<name>.c`：
 
 ```c
-#include "claw/tools/claw_tools.h"
+#include "claw/services/tools/tools.h"
 #include "claw_config.h"
 
 static claw_err_t my_tool_execute(struct claw_tool *tool,

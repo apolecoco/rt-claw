@@ -45,7 +45,7 @@ def main():
 
     """ Find a source entry to extract ESP-IDF flags """
     entry = None
-    search_order = ['rt_claw_stub.c', 'claw/claw_init.c', 'main/main.c']
+    search_order = ['rt_claw_stub.c', 'claw/init.c', 'main/main.c']
     for pattern in search_order:
         for e in cc:
             if pattern in e.get('file', ''):

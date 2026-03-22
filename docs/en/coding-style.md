@@ -115,7 +115,7 @@ Multi-line comments:
 #include "osal/claw_os.h"  /* OSAL header first (for source in claw/) */
 #include <stdint.h>       /* then system/standard headers */
 #include <string.h>
-#include "claw/core/gateway.h" /* then project headers */
+#include "claw/services/gateway.h" /* then project headers */
 ```
 
 For OSAL implementation files (`osal/freertos/`, `osal/rtthread/`),
@@ -198,7 +198,7 @@ Never call RTOS-specific allocators directly from `claw/` code.
 scripts/check-patch.sh
 
 # Check specific files
-scripts/check-patch.sh --file claw/core/gateway.c include/osal/claw_os.h
+scripts/check-patch.sh --file claw/services/gateway.c include/osal/claw_os.h
 
 # Check staged changes only
 scripts/check-patch.sh --staged
