@@ -35,12 +35,108 @@
 
 #include "osal/claw_kv.h"
 
+#include <stdarg.h>
+
+/* ---- shell_printf / capture mechanism ---- */
+
+static struct {
+    char  *buf;
+    size_t size;
+    size_t pos;
+} s_capture;
+
+static struct claw_mutex *s_capture_lock;
+
+static void capture_init_once(void)
+{
+    if (!s_capture_lock) {
+        s_capture_lock = claw_mutex_create("sh_cap");
+    }
+}
+
+void shell_capture_start(char *buf, size_t size)
+{
+    capture_init_once();
+    claw_mutex_lock(s_capture_lock, CLAW_WAIT_FOREVER);
+    s_capture.buf = buf;
+    s_capture.size = size;
+    s_capture.pos = 0;
+    if (buf && size > 0) {
+        buf[0] = '\0';
+    }
+}
+
+size_t shell_capture_stop(void)
+{
+    size_t n = s_capture.pos;
+    s_capture.buf = NULL;
+    s_capture.size = 0;
+    s_capture.pos = 0;
+    if (s_capture_lock) {
+        claw_mutex_unlock(s_capture_lock);
+    }
+    return n;
+}
+
+/* Strip ANSI escape sequences (e.g. \033[0;31m) from src into dst */
+static size_t strip_ansi(const char *src, size_t src_len,
+                         char *dst, size_t dst_size)
+{
+    size_t di = 0;
+    size_t si = 0;
+
+    while (si < src_len && di < dst_size - 1) {
+        if (src[si] == '\033' && si + 1 < src_len && src[si + 1] == '[') {
+            si += 2;
+            while (si < src_len && src[si] != 'm') {
+                si++;
+            }
+            if (si < src_len) {
+                si++;  /* skip 'm' */
+            }
+        } else {
+            dst[di++] = src[si++];
+        }
+    }
+    dst[di] = '\0';
+    return di;
+}
+
+int shell_printf(const char *fmt, ...)
+{
+    va_list ap;
+    int ret;
+
+    /* Always print to stdout (serial console) */
+    va_start(ap, fmt);
+    ret = vprintf(fmt, ap);
+    va_end(ap);
+
+    /* Also append to capture buffer if active */
+    if (s_capture.buf && s_capture.pos < s_capture.size - 1) {
+        char tmp[512];
+        va_start(ap, fmt);
+        int n = vsnprintf(tmp, sizeof(tmp), fmt, ap);
+        va_end(ap);
+
+        if (n > 0) {
+            size_t avail = s_capture.size - 1 - s_capture.pos;
+            size_t written = strip_ansi(tmp, (size_t)n,
+                                        s_capture.buf + s_capture.pos,
+                                        avail + 1);
+            s_capture.pos += written;
+        }
+    }
+
+    return ret;
+}
+
 /* ---- KV persistence (platform-independent via OSAL) ---- */
 
 void shell_nvs_save_str(const char *ns, const char *key, const char *val)
 {
     if (claw_kv_set_str(ns, key, val) != CLAW_OK) {
-        printf("[error] KV save failed\n");
+        shell_printf("[error] KV save failed\n");
     }
 }
 
@@ -102,7 +198,7 @@ static void cmd_log(int argc, char **argv)
         claw_log_set_enabled(0);
     } else if (strcmp(argv[1], "level") == 0) {
         if (argc < 3) {
-            printf("Log level: %s\n",
+            shell_printf("Log level: %s\n",
                    log_level_name(claw_log_get_level()));
             return;
         }
@@ -117,17 +213,17 @@ static void cmd_log(int argc, char **argv)
             lv = CLAW_LOG_DEBUG;
         }
         if (lv < 0) {
-            printf("Usage: /log level <error|warn|info|debug>\n");
+            shell_printf("Usage: /log level <error|warn|info|debug>\n");
             return;
         }
         claw_log_set_level(lv);
-        printf("Log level: %s\n", log_level_name(lv));
+        shell_printf("Log level: %s\n", log_level_name(lv));
         return;
     } else {
-        printf("Usage: /log [on|off|level <error|warn|info|debug>]\n");
+        shell_printf("Usage: /log [on|off|level <error|warn|info|debug>]\n");
         return;
     }
-    printf("Log output: %s\n",
+    shell_printf("Log output: %s\n",
            claw_log_get_enabled() ? "ON" : "OFF");
 }
 
@@ -135,7 +231,7 @@ static void cmd_history(int argc, char **argv)
 {
     (void)argc;
     (void)argv;
-    printf("Conversation memory: %d messages\n", ai_memory_count());
+    shell_printf("Conversation memory: %d messages\n", ai_memory_count());
 }
 
 static void cmd_clear(int argc, char **argv)
@@ -143,13 +239,13 @@ static void cmd_clear(int argc, char **argv)
     (void)argc;
     (void)argv;
     ai_memory_clear();
-    printf("Conversation memory cleared.\n");
+    shell_printf("Conversation memory cleared.\n");
 }
 
 static void cmd_ai_set(int argc, char **argv)
 {
     if (argc < 3) {
-        printf("Usage: /ai_set key|url|model <value>\n");
+        shell_printf("Usage: /ai_set key|url|model <value>\n");
         return;
     }
 
@@ -159,17 +255,17 @@ static void cmd_ai_set(int argc, char **argv)
     if (strcmp(field, "key") == 0) {
         ai_set_api_key(value);
         shell_nvs_save_str(SHELL_NVS_NS_AI, "api_key", value);
-        printf("API key saved (effective immediately).\n");
+        shell_printf("API key saved (effective immediately).\n");
     } else if (strcmp(field, "url") == 0) {
         ai_set_api_url(value);
         shell_nvs_save_str(SHELL_NVS_NS_AI, "api_url", value);
-        printf("API URL saved: %s\n", value);
+        shell_printf("API URL saved: %s\n", value);
     } else if (strcmp(field, "model") == 0) {
         ai_set_model(value);
         shell_nvs_save_str(SHELL_NVS_NS_AI, "model", value);
-        printf("Model saved: %s\n", value);
+        shell_printf("Model saved: %s\n", value);
     } else {
-        printf("Unknown field: %s (use key|url|model)\n", field);
+        shell_printf("Unknown field: %s (use key|url|model)\n", field);
     }
 }
 
@@ -180,18 +276,18 @@ static void cmd_ai_status(int argc, char **argv)
 
     (void)argc;
     (void)argv;
-    printf("AI Engine:\n");
-    printf("  API Key: %s\n",
+    shell_printf("AI Engine:\n");
+    shell_printf("  API Key: %s\n",
            klen == 0 ? "(not set)" :
            klen <= 8 ? "****" : "****...****");
-    printf("  API URL: %s\n", ai_get_api_url());
-    printf("  Model:   %s\n", ai_get_model());
+    shell_printf("  API URL: %s\n", ai_get_api_url());
+    shell_printf("  Model:   %s\n", ai_get_model());
 }
 
 static void cmd_feishu_set(int argc, char **argv)
 {
     if (argc < 3) {
-        printf("Usage: /feishu_set <app_id> <app_secret>\n");
+        shell_printf("Usage: /feishu_set <app_id> <app_secret>\n");
         return;
     }
 
@@ -199,7 +295,7 @@ static void cmd_feishu_set(int argc, char **argv)
     feishu_set_app_secret(argv[2]);
     shell_nvs_save_str(SHELL_NVS_NS_FEISHU, "app_id", argv[1]);
     shell_nvs_save_str(SHELL_NVS_NS_FEISHU, "app_secret", argv[2]);
-    printf("Feishu credentials saved (reboot to apply).\n");
+    shell_printf("Feishu credentials saved (reboot to apply).\n");
 }
 
 static void cmd_feishu_status(int argc, char **argv)
@@ -208,23 +304,23 @@ static void cmd_feishu_status(int argc, char **argv)
 
     (void)argc;
     (void)argv;
-    printf("Feishu:\n");
-    printf("  App ID:     %s\n", id[0] ? id : "(not set)");
-    printf("  App Secret: %s\n",
+    shell_printf("Feishu:\n");
+    shell_printf("  App ID:     %s\n", id[0] ? id : "(not set)");
+    shell_printf("  App Secret: %s\n",
            feishu_get_app_secret()[0] ? "****" : "(not set)");
 }
 
 static void cmd_telegram_set(int argc, char **argv)
 {
     if (argc < 2) {
-        printf("Usage: /telegram_set <bot_token>\n");
+        shell_printf("Usage: /telegram_set <bot_token>\n");
         return;
     }
 
     telegram_set_bot_token(argv[1]);
     shell_nvs_save_str(SHELL_NVS_NS_TELEGRAM, "bot_token",
                        argv[1]);
-    printf("Telegram token saved (reboot to apply).\n");
+    shell_printf("Telegram token saved (reboot to apply).\n");
 }
 
 static void cmd_telegram_status(int argc, char **argv)
@@ -233,15 +329,15 @@ static void cmd_telegram_status(int argc, char **argv)
     (void)argv;
     const char *tok = telegram_get_bot_token();
 
-    printf("Telegram:\n");
-    printf("  Bot token: %s\n",
+    shell_printf("Telegram:\n");
+    shell_printf("  Bot token: %s\n",
            tok[0] ? "****" : "(not set)");
 }
 
 static void cmd_remember(int argc, char **argv)
 {
     if (argc < 3) {
-        printf("Usage: /remember <key> <value...>\n");
+        shell_printf("Usage: /remember <key> <value...>\n");
         return;
     }
 
@@ -257,23 +353,23 @@ static void cmd_remember(int argc, char **argv)
     }
 
     if (ai_ltm_save(argv[1], value) == CLAW_OK) {
-        printf("Remembered: %s = %s\n", argv[1], value);
+        shell_printf("Remembered: %s = %s\n", argv[1], value);
     } else {
-        printf("[error] failed to save\n");
+        shell_printf("[error] failed to save\n");
     }
 }
 
 static void cmd_forget(int argc, char **argv)
 {
     if (argc < 2) {
-        printf("Usage: /forget <key>\n");
+        shell_printf("Usage: /forget <key>\n");
         return;
     }
 
     if (ai_ltm_delete(argv[1]) == CLAW_OK) {
-        printf("Forgot: %s\n", argv[1]);
+        shell_printf("Forgot: %s\n", argv[1]);
     } else {
-        printf("[error] key '%s' not found\n", argv[1]);
+        shell_printf("[error] key '%s' not found\n", argv[1]);
     }
 }
 
@@ -292,7 +388,7 @@ static void cmd_skills(int argc, char **argv)
     if (argc < 2) {
         char buf[512];
         ai_skill_list_to_buf(buf, sizeof(buf));
-        printf("%s", buf);
+        shell_printf("%s", buf);
         return;
     }
 
@@ -309,15 +405,15 @@ static void cmd_skills(int argc, char **argv)
 
     char *reply = claw_malloc(SKILL_REPLY_SIZE);
     if (!reply) {
-        printf("[error] no memory\n");
+        shell_printf("[error] no memory\n");
         return;
     }
 
     if (ai_skill_execute(argv[1], params,
                          reply, SKILL_REPLY_SIZE) == CLAW_OK) {
-        printf("\n" CLR_GREEN "rt-claw> " CLR_RESET "%s\n", reply);
+        shell_printf("\n" CLR_GREEN "rt-claw> " CLR_RESET "%s\n", reply);
     } else {
-        printf("\n" CLR_RED "error> " CLR_RESET "%s\n", reply);
+        shell_printf("\n" CLR_RED "error> " CLR_RESET "%s\n", reply);
     }
     claw_free(reply);
 }
@@ -332,12 +428,12 @@ static void cmd_task(int argc, char **argv)
     }
     if (strcmp(argv[1], "rm") == 0 && argc >= 3) {
         if (sched_tool_remove_by_name(argv[2]) == CLAW_OK) {
-            printf("task '%s' removed\n", argv[2]);
+            shell_printf("task '%s' removed\n", argv[2]);
         } else {
-            printf("task '%s' not found\n", argv[2]);
+            shell_printf("task '%s' not found\n", argv[2]);
         }
     } else {
-        printf("usage: /task [rm <name>]\n");
+        shell_printf("usage: /task [rm <name>]\n");
     }
 }
 #endif
@@ -355,35 +451,35 @@ static void cmd_nodes(int argc, char **argv)
 static void cmd_ota(int argc, char **argv)
 {
     if (argc < 2) {
-        printf("Usage: /ota check | update [url]\n");
+        shell_printf("Usage: /ota check | update [url]\n");
         return;
     }
 
     if (strcmp(argv[1], "version") == 0) {
-        printf("Running: %s\n", claw_ota_running_version());
+        shell_printf("Running: %s\n", claw_ota_running_version());
     } else if (!claw_ota_supported()) {
-        printf("OTA not supported on this platform.\n");
+        shell_printf("OTA not supported on this platform.\n");
     } else if (strcmp(argv[1], "check") == 0) {
         claw_ota_info_t info;
         int ret = ota_check_update(&info);
         if (ret == 1) {
-            printf("Update available: %s\n", info.version);
-            printf("  URL:  %s\n", info.url);
-            printf("  Size: %lu bytes\n",
+            shell_printf("Update available: %s\n", info.version);
+            shell_printf("  URL:  %s\n", info.url);
+            shell_printf("  Size: %lu bytes\n",
                    (unsigned long)info.size);
-            printf("Run '/ota update' to install.\n");
+            shell_printf("Run '/ota update' to install.\n");
         } else if (ret == 0) {
-            printf("Firmware is up to date (%s).\n",
+            shell_printf("Firmware is up to date (%s).\n",
                    claw_ota_running_version());
         } else {
-            printf("[error] version check failed\n");
+            shell_printf("[error] version check failed\n");
         }
     } else if (strcmp(argv[1], "update") == 0) {
         if (argc >= 3) {
             if (ota_trigger_update(argv[2]) == CLAW_OK) {
-                printf("OTA update started.\n");
+                shell_printf("OTA update started.\n");
             } else {
-                printf("[error] failed to start OTA\n");
+                shell_printf("[error] failed to start OTA\n");
             }
         } else {
             claw_ota_info_t uinfo;
@@ -391,26 +487,26 @@ static void cmd_ota(int argc, char **argv)
             if (ur == 1) {
                 if (ota_trigger_update(uinfo.url)
                         == CLAW_OK) {
-                    printf("Updating to %s ...\n",
+                    shell_printf("Updating to %s ...\n",
                            uinfo.version);
                 } else {
-                    printf("[error] OTA start failed\n");
+                    shell_printf("[error] OTA start failed\n");
                 }
             } else if (ur == 0) {
-                printf("Already up to date (%s).\n",
+                shell_printf("Already up to date (%s).\n",
                        claw_ota_running_version());
             } else {
-                printf("[error] version check failed\n");
+                shell_printf("[error] version check failed\n");
             }
         }
     } else if (strcmp(argv[1], "rollback") == 0) {
         if (claw_ota_rollback() != CLAW_OK) {
-            printf("[error] rollback failed\n");
+            shell_printf("[error] rollback failed\n");
         } else {
-            printf("Rolling back firmware ...\n");
+            shell_printf("Rolling back firmware ...\n");
         }
     } else {
-        printf("Usage: /ota version|check|update|rollback\n");
+        shell_printf("Usage: /ota version|check|update|rollback\n");
     }
 }
 #endif
@@ -419,7 +515,7 @@ static void cmd_ip(int argc, char **argv)
 {
     (void)argc;
     (void)argv;
-    printf("Network:\n");
+    shell_printf("Network:\n");
     net_print_ipinfo();
 }
 
@@ -434,11 +530,11 @@ static void cmd_tools(int argc, char *argv[])
     claw_list_node_t *pos;
     int i = 0;
 
-    printf("Registered tools (%d):\n", claw_tool_core_count());
+    shell_printf("Registered tools (%d):\n", claw_tool_core_count());
     claw_list_for_each(pos, head) {
         struct claw_tool *t = claw_list_entry(pos, struct claw_tool,
                                                node);
-        printf("  %d. %-20s %s\n", ++i, t->name,
+        shell_printf("  %d. %-20s %s\n", ++i, t->name,
                t->description ? t->description : "");
     }
 }
@@ -479,24 +575,7 @@ int shell_common_command_count(void)
     return SHELL_CMD_COUNT(shell_common_commands);
 }
 
-/* ---- Capture shell command output for IM dispatch ---- */
-
-#if defined(CLAW_PLATFORM_ESP_IDF) || defined(CLAW_PLATFORM_LINUX)
-static const shell_cmd_t *find_common_cmd(const char *name)
-{
-    int count = SHELL_CMD_COUNT(shell_common_commands);
-    for (int i = 0; i < count; i++) {
-        if (strcmp(shell_common_commands[i].name, name) == 0) {
-            return &shell_common_commands[i];
-        }
-    }
-    return NULL;
-}
-#endif
-
-#if defined(CLAW_PLATFORM_LINUX)
-#include <unistd.h>
-#include <fcntl.h>
+/* ---- shell_exec_capture: find + run + capture ---- */
 
 int shell_exec_capture(const char *cmd_name, int argc, char **argv,
                        char *buf, size_t buf_size)
@@ -506,87 +585,22 @@ int shell_exec_capture(const char *cmd_name, int argc, char **argv,
     }
     buf[0] = '\0';
 
-    const shell_cmd_t *cmd = find_common_cmd(cmd_name);
-    if (!cmd) {
-        return CLAW_ERR_NOENT;
-    }
-
-    int pipefd[2];
-    if (pipe(pipefd) < 0) {
-        return CLAW_ERR_GENERIC;
-    }
-
-    int flags = fcntl(pipefd[0], F_GETFL, 0);
-    fcntl(pipefd[0], F_SETFL, flags | O_NONBLOCK);
-
-    fflush(stdout);
-    int saved_stdout = dup(STDOUT_FILENO);
-    dup2(pipefd[1], STDOUT_FILENO);
-
-    cmd->handler(argc, argv);
-
-    fflush(stdout);
-    dup2(saved_stdout, STDOUT_FILENO);
-    close(saved_stdout);
-    close(pipefd[1]);
-
-    size_t total = 0;
-    while (total < buf_size - 1) {
-        int n = read(pipefd[0], buf + total, buf_size - 1 - total);
-        if (n <= 0) {
+    /* Find command in common table */
+    int count = SHELL_CMD_COUNT(shell_common_commands);
+    const shell_cmd_t *cmd = NULL;
+    for (int i = 0; i < count; i++) {
+        if (strcmp(shell_common_commands[i].name, cmd_name) == 0) {
+            cmd = &shell_common_commands[i];
             break;
         }
-        total += (size_t)n;
     }
-    buf[total] = '\0';
-    close(pipefd[0]);
-
-    return CLAW_OK;
-}
-
-#elif defined(CLAW_PLATFORM_ESP_IDF)
-
-/*
- * ESP-IDF lacks pipe()/dup2(). Use a global capture buffer that
- * snprintf-based commands can write to via shell_capture_printf().
- * For existing printf()-based commands, we temporarily swap the
- * stdout buffer using setvbuf().
- */
-int shell_exec_capture(const char *cmd_name, int argc, char **argv,
-                       char *buf, size_t buf_size)
-{
-    if (!cmd_name || !buf || buf_size == 0) {
-        return CLAW_ERR_INVALID;
-    }
-    buf[0] = '\0';
-
-    const shell_cmd_t *cmd = find_common_cmd(cmd_name);
     if (!cmd) {
         return CLAW_ERR_NOENT;
     }
 
-    fflush(stdout);
-    setvbuf(stdout, buf, _IOFBF, (int)buf_size);
-
+    shell_capture_start(buf, buf_size);
     cmd->handler(argc, argv);
-
-    fflush(stdout);
-    setvbuf(stdout, NULL, _IOLBF, 0);
+    shell_capture_stop();
 
     return CLAW_OK;
 }
-
-#else /* bare-metal: stub */
-
-int shell_exec_capture(const char *cmd_name, int argc, char **argv,
-                       char *buf, size_t buf_size)
-{
-    (void)cmd_name;
-    (void)argc;
-    (void)argv;
-    (void)buf;
-    (void)buf_size;
-    return CLAW_ERR_NOENT;
-}
-
-#endif
