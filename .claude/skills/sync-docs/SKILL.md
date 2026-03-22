@@ -56,7 +56,7 @@ docs/
 
 Read the git diff to determine which subsystems were affected:
 - `claw/services/*` → update architecture.md service descriptions
-- `claw/tools/*` → update tool-extension.md
+- `claw/services/tools/*` → update tool-extension.md
 - `platform/*` → update usage.md build/run/flash sections
 - `include/*` → update API references
 - `osal/*` → update architecture.md OSAL section

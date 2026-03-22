@@ -22,7 +22,7 @@ Format: `<platform-name> [rtos]`
 
 - Existing platforms: !`ls -d platform/*/`
 - OSAL backends: !`ls osal/`
-- Board abstraction: !`head -40 include/claw_board.h 2>/dev/null`
+- Board abstraction: !`head -40 include/platform/board.h 2>/dev/null`
 - Cross-file examples: !`ls platform/*/cross.ini 2>/dev/null; ls scripts/gen-*-cross.py 2>/dev/null`
 
 ## Platform Architecture Reference

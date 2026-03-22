@@ -23,10 +23,10 @@ Format: `<type> <name> [description]`
 ## Context
 
 - Existing services: !`ls claw/services/`
-- Existing tools: !`ls claw/tools/*.c 2>/dev/null`
+- Existing tools: !`ls claw/services/tools/*.c 2>/dev/null`
 - Existing drivers: !`ls -d drivers/*/ 2>/dev/null`
 - Meson options: !`head -60 meson_options.txt`
-- Init registration: !`grep -n 'service_start\|register' claw/claw_init.c | head -20`
+- Init registration: !`grep -n 'service_start\|register' claw/init.c | head -20`
 
 ## Module Architecture Reference
 
@@ -50,7 +50,7 @@ Based on existing services (ai, net, swarm, im):
    - Conditional compilation via feature option
    - Add source files to `claw_sources`
 
-4. **Registration** (`claw/claw_init.c`):
+4. **Registration** (`claw/init.c`):
    - `#include` the header (guarded by feature macro)
    - Call `<name>_init()` in `claw_init()`
 
@@ -66,11 +66,11 @@ Based on existing drivers (net/espressif, audio/espressif, display/espressif):
 3. Thin wrapper around vendor SDK, exposing clean API
 4. No business logic — hardware abstraction only
 
-### Tool Module Pattern (claw/tools/)
+### Tool Module Pattern (claw/services/tools/)
 
 Based on existing Tool Use framework:
 
-1. **Source** (`claw/tools/tool_<name>.c`)
+1. **Source** (`claw/services/tools/<name>.c`)
 2. Register via `CLAW_TOOL_REGISTER()` macro
 3. Declare capabilities with `SWARM_CAP_*` flags
 4. Implement `tool_<name>_execute()` callback
@@ -99,7 +99,7 @@ Apply project code style:
 
 ### Step 4: Register in init
 
-Add the module initialization call to `claw/claw_init.c`, guarded by the feature macro.
+Add the module initialization call to `claw/init.c`, guarded by the feature macro.
 
 ### Step 5: Verify build
 
