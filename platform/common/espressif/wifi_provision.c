@@ -630,37 +630,36 @@ static esp_err_t http_save_handler(httpd_req_t *req)
 
     char val[256];
 
-    /* WiFi SSID (mandatory) */
-    if (json_get_str(body, "wifi_ssid", val, sizeof(val)) != 0 ||
-        val[0] == '\0') {
-        free(body);
-        httpd_resp_set_type(req, "application/json");
-        httpd_resp_sendstr(req,
-            "{\"ok\":false,\"error\":\"WiFi SSID is required\"}");
-        return ESP_OK;
-    }
-
-    char wifi_ssid[33];
-    strncpy(wifi_ssid, val, sizeof(wifi_ssid) - 1);
-    wifi_ssid[sizeof(wifi_ssid) - 1] = '\0';
-
+    /*
+     * WiFi: only update when BOTH ssid and password are provided.
+     * This allows saving other settings (AI, Feishu, Telegram)
+     * without touching WiFi credentials.
+     */
+    char wifi_ssid[33] = "";
     char wifi_pass[65] = "";
-    if (json_get_str(body, "wifi_pass", val, sizeof(val)) == 0) {
+    if (json_get_str(body, "wifi_ssid", val, sizeof(val)) == 0 &&
+        val[0] != '\0') {
+        strncpy(wifi_ssid, val, sizeof(wifi_ssid) - 1);
+        wifi_ssid[sizeof(wifi_ssid) - 1] = '\0';
+    }
+    if (json_get_str(body, "wifi_pass", val, sizeof(val)) == 0 &&
+        val[0] != '\0') {
         strncpy(wifi_pass, val, sizeof(wifi_pass) - 1);
         wifi_pass[sizeof(wifi_pass) - 1] = '\0';
     }
 
-    /* Save WiFi via NVS (existing API) */
-    esp_err_t wifi_err = wifi_manager_set_credentials(wifi_ssid,
-                                                       wifi_pass);
-    if (wifi_err != ESP_OK) {
-        free(body);
-        httpd_resp_set_type(req, "application/json");
-        httpd_resp_sendstr(req,
-            "{\"ok\":false,\"error\":\"WiFi save failed\"}");
-        return ESP_OK;
+    if (wifi_ssid[0] != '\0' && wifi_pass[0] != '\0') {
+        esp_err_t wifi_err = wifi_manager_set_credentials(wifi_ssid,
+                                                           wifi_pass);
+        if (wifi_err != ESP_OK) {
+            free(body);
+            httpd_resp_set_type(req, "application/json");
+            httpd_resp_sendstr(req,
+                "{\"ok\":false,\"error\":\"WiFi save failed\"}");
+            return ESP_OK;
+        }
+        ESP_LOGI(TAG, "WiFi credentials saved: %s", wifi_ssid);
     }
-    ESP_LOGI(TAG, "WiFi credentials saved: %s", wifi_ssid);
 
     /* Save optional fields via OSAL KV (only non-empty values) */
     int kv_err = 0;

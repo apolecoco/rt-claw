@@ -25,7 +25,7 @@
 #define WIFI_CONNECTED_BIT  BIT0
 #define WIFI_FAIL_BIT       BIT1
 
-#define WIFI_MAX_RETRY      10
+#define WIFI_MAX_RETRY      3
 #define WIFI_RETRY_BASE_MS  1000
 #define WIFI_RETRY_MAX_MS   30000
 

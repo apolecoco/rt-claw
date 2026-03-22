@@ -81,8 +81,8 @@ void wifi_board_early_init(void)
     esp_err_t wifi_err = wifi_manager_start();
 
     if (wifi_err == ESP_OK) {
-        CLAW_LOGI("board", "waiting for WiFi (30s timeout)...");
-        if (wifi_manager_wait_connected(30000) == ESP_OK) {
+        CLAW_LOGI("board", "waiting for WiFi (10s timeout)...");
+        if (wifi_manager_wait_connected(10000) == ESP_OK) {
             CLAW_LOGI("board", "WiFi connected: %s",
                       wifi_manager_get_ip());
             return;

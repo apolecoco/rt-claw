@@ -478,8 +478,8 @@ static int http_post_json(const char *url,
                                resp, resp_size, &resp_len);
 
     if (status < 200 || status >= 300) {
-        CLAW_LOGE(TAG, "HTTP POST %s: status=%d",
-                  url, status);
+        CLAW_LOGE(TAG, "HTTP POST %s: status=%d resp=%.200s",
+                  url, status, resp);
         return CLAW_ERROR;
     }
     return CLAW_OK;
@@ -501,6 +501,7 @@ static int refresh_token(struct feishu_ctx *ctx)
              "{\"app_id\":\"%s\",\"app_secret\":\"%s\"}",
              ctx->app_id, ctx->app_secret);
 
+    CLAW_LOGW(TAG, "token req body: %s", body);
     int ret = http_post_json(TOKEN_URL, NULL, body, resp, RESP_BUF_SIZE);
     if (ret != CLAW_OK) {
         claw_free(resp);
