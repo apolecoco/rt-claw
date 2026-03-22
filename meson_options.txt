@@ -44,9 +44,9 @@ option('ai_memory_max_msgs', type: 'integer', value: 0, min: 0, max: 64,
     description: 'Max conversation memory messages, 0=use default (env: RTCLAW_AI_MEMORY_MAX_MSGS)')
 
 # IM integrations — enable flags
-option('feishu', type: 'boolean', value: false,
+option('feishu', type: 'boolean', value: true,
     description: 'Enable Feishu (Lark) IM integration')
-option('telegram', type: 'boolean', value: false,
+option('telegram', type: 'boolean', value: true,
     description: 'Enable Telegram Bot integration')
 
 # Feishu (Lark) IM — credentials

@@ -56,3 +56,4 @@ platform/*/cross.ini
 .claude/*
 !.claude/skills/
 .humanize*
+slides
