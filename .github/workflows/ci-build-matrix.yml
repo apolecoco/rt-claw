@@ -36,29 +36,36 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Tier 1: default builds for all platforms
   build:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
+          - target: linux
+            make_target: build-linux
+            esp_targets: ""
           - target: vexpress-a9-qemu
             make_target: vexpress-a9-qemu
             esp_targets: ""
           - target: zynq-a9-qemu
             make_target: build-zynq-a9-qemu
             esp_targets: ""
+          - target: esp32c3-qemu
+            make_target: build-esp32c3-qemu
+            esp_targets: esp32c3
           - target: esp32c3-devkit
             make_target: build-esp32c3-devkit
             esp_targets: esp32c3
-          - target: esp32c3-qemu
-            make_target: build-esp32c3-qemu
+          - target: esp32c3-xiaozhi-xmini
+            make_target: build-esp32c3-xiaozhi-xmini
             esp_targets: esp32c3
           - target: esp32s3-qemu
             make_target: build-esp32s3-qemu
             esp_targets: esp32s3
           - target: esp32s3-default
-            make_target: build-esp32s3-default
+            make_target: build-esp32s3
             esp_targets: esp32s3
 
     steps:
@@ -97,61 +104,30 @@ jobs:
         if: ${{ matrix.esp_targets == '' }}
         run: make ${{ matrix.make_target }}
 
-      - name: Prepare artifact bundle
-        run: |
-          OUT_DIR="$(pwd)/ci-artifacts/${{ matrix.target }}"
-          mkdir -p "${OUT_DIR}"
-
-          case "${{ matrix.target }}" in
-            vexpress-a9-qemu)
-              cp build/vexpress-a9-qemu/rtthread.bin "${OUT_DIR}/"
-              cp build/vexpress-a9-qemu/rtthread.elf "${OUT_DIR}/"
-              cp build/vexpress-a9-qemu/rtthread.map "${OUT_DIR}/"
-              ;;
-            zynq-a9-qemu)
-              cp build/zynq-a9-qemu/platform/zynq-a9/rtclaw.elf "${OUT_DIR}/"
-              ;;
-            esp32c3-devkit)
-              cp build/esp32c3-devkit/idf/bootloader/bootloader.bin "${OUT_DIR}/"
-              cp build/esp32c3-devkit/idf/partition_table/partition-table.bin "${OUT_DIR}/"
-              cp build/esp32c3-devkit/idf/rt-claw.bin "${OUT_DIR}/firmware.bin"
-              cp build/esp32c3-devkit/idf/flash_args "${OUT_DIR}/"
-              ;;
-            esp32c3-qemu)
-              source ~/esp/esp-idf/export.sh
-              cp build/esp32c3-qemu/idf/bootloader/bootloader.bin "${OUT_DIR}/"
-              cp build/esp32c3-qemu/idf/partition_table/partition-table.bin "${OUT_DIR}/"
-              cp build/esp32c3-qemu/idf/rt-claw.bin "${OUT_DIR}/firmware.bin"
-              cp build/esp32c3-qemu/idf/flash_args "${OUT_DIR}/"
-              (
-                cd build/esp32c3-qemu/idf
-                esptool.py --chip esp32c3 merge_bin --fill-flash-size 4MB \
-                  -o "${OUT_DIR}/flash_image.bin" @flash_args
-              )
-              ;;
-            esp32s3-qemu)
-              source ~/esp/esp-idf/export.sh
-              cp build/esp32s3-qemu/idf/bootloader/bootloader.bin "${OUT_DIR}/"
-              cp build/esp32s3-qemu/idf/partition_table/partition-table.bin "${OUT_DIR}/"
-              cp build/esp32s3-qemu/idf/rt-claw.bin "${OUT_DIR}/firmware.bin"
-              cp build/esp32s3-qemu/idf/flash_args "${OUT_DIR}/"
-              (
-                cd build/esp32s3-qemu/idf
-                esptool.py --chip esp32s3 merge_bin --fill-flash-size 4MB \
-                  -o "${OUT_DIR}/flash_image.bin" @flash_args
-              )
-              ;;
-            esp32s3-default)
-              cp build/esp32s3-default/idf/bootloader/bootloader.bin "${OUT_DIR}/"
-              cp build/esp32s3-default/idf/partition_table/partition-table.bin "${OUT_DIR}/"
-              cp build/esp32s3-default/idf/ota_data_initial.bin "${OUT_DIR}/"
-              cp build/esp32s3-default/idf/rt-claw.bin "${OUT_DIR}/firmware.bin"
-              cp build/esp32s3-default/idf/flash_args "${OUT_DIR}/"
-              ;;
-          esac
-
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+  # Tier 4: Linux Meson option matrix (fast, no cross-compiler)
+  meson-option-matrix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
         with:
-          name: ${{ matrix.target }}-build
-          path: ci-artifacts/${{ matrix.target }}/
+          submodules: recursive
+
+      - name: Install system dependencies
+        run: scripts/ci/install-system-deps.sh build
+
+      - name: Run Meson option matrix
+        run: scripts/test-meson-matrix.sh
+
+  # Tier 6: unit tests
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install system dependencies
+        run: scripts/ci/install-system-deps.sh build
+
+      - name: Run unit tests
+        run: make test-unit-linux
