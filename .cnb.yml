@@ -1,4 +1,18 @@
 # .cnb.yml
+# Push pipeline: build and push Docker image on every push
+main:
+  push:
+    - services:
+        - docker
+      stages:
+        - name: build-and-push-image
+          image: docker:latest
+          script:
+            - docker build -t rt-claw:latest -f .ide/Dockerfile .
+            - docker tag rt-claw:latest registry.cnb.cool/gevico.online/rtclaw/rt-claw:latest
+            - docker push registry.cnb.cool/gevico.online/rtclaw/rt-claw:latest
+
+# Cloud IDE: build image from Dockerfile, use cached result on subsequent opens
 $:
   vscode:
     - docker:
@@ -7,5 +21,5 @@ $:
         - vscode
         - docker
       stages:
-        - name: ls
+        - name: verify
           script: ls -al
