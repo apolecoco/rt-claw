@@ -2,13 +2,17 @@ set(PLATFORM_DIR "${CMAKE_CURRENT_LIST_DIR}/..")
 set(PROJECT_ROOT "${PLATFORM_DIR}/../..")
 
 set(MAIN_SRCS "main.c")
-set(MAIN_INCLUDES "." "${PROJECT_ROOT}")
+set(MAIN_INCLUDES "." "${PROJECT_ROOT}" "${PROJECT_ROOT}/include")
 set(MAIN_REQUIRES rt_claw console esp_driver_uart esp_driver_usb_serial_jtag)
+set(MAIN_REQUIRES rt_claw console esp_driver_uart esp_driver_usb_serial_jtag esp_lcd
+    esp_driver_spi
+    esp_driver_gpio)
 
 list(APPEND MAIN_SRCS
     "${PLATFORM_DIR}/boards/${RTCLAW_BOARD}/board.c"
     "${PROJECT_ROOT}/drivers/serial/espressif/console.c"
-    "${PROJECT_ROOT}/platform/common/espressif/esp_shell.c")
+    "${PROJECT_ROOT}/platform/common/espressif/esp_shell.c"
+    "${PROJECT_ROOT}/drivers/display/espressif/st7789_lcd.c")
 
 if(CONFIG_ESP_WIFI_ENABLED)
     list(APPEND MAIN_SRCS

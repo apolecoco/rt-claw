@@ -28,6 +28,11 @@ void claw_tools_stop(void);
 int claw_tools_count(void);
 
 /**
+ * 
+ */
+int claw_tools_count(void);
+
+/**
  * Find tool by name. Returns NULL if not found.
  */
 const struct claw_tool *claw_tool_find(const char *name);

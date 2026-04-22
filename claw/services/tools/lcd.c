@@ -17,14 +17,20 @@
 
 #if defined(CLAW_PLATFORM_ESP_IDF) && defined(CONFIG_RTCLAW_LCD_ENABLE)
 
+/*
 #include "esp_lcd_panel_ops.h"
 #include "esp_lcd_qemu_rgb.h"
+*/
 
-#define LCD_WIDTH   320
+#include "drivers/display/espressif/st7789_lcd.h"
+#include "esp_log.h"
+
+#define LCD_WIDTH   240
 #define LCD_HEIGHT  240
 #define LCD_BPP     16  /* RGB565 */
-
+/*
 static esp_lcd_panel_handle_t s_panel;
+*/
 static uint16_t *s_fb;      /* QEMU framebuffer pointer */
 static int s_lcd_active;    /* Skip rendering until first tool use */
 
@@ -182,6 +188,14 @@ static uint16_t parse_color(const char *s)
 
 /* -------------------- Drawing primitives -------------------- */
 
+static void lcd_present(void)
+{
+    if (!s_fb) {
+        return;
+    }
+    st7789_present_fb(s_fb, LCD_WIDTH, LCD_HEIGHT);
+}
+
 static inline void put_pixel(int x, int y, uint16_t color)
 {
     if (x >= 0 && x < LCD_WIDTH && y >= 0 && y < LCD_HEIGHT) {
@@ -201,7 +215,7 @@ static void lcd_fill(uint16_t color)
     for (int i = 0; i < LCD_WIDTH * LCD_HEIGHT; i++) {
         s_fb[i] = color;
     }
-    esp_lcd_rgb_qemu_refresh(s_panel);
+    lcd_present();
 }
 
 static void lcd_draw_char(int x, int y, char c, uint16_t fg, uint16_t bg,
@@ -248,7 +262,7 @@ static void lcd_draw_text(int x, int y, const char *text, uint16_t fg,
         }
         text++;
     }
-    esp_lcd_rgb_qemu_refresh(s_panel);
+    lcd_present();
 }
 
 static void lcd_draw_rect(int x, int y, int w, int h, uint16_t color,
@@ -266,7 +280,7 @@ static void lcd_draw_rect(int x, int y, int w, int h, uint16_t color,
             put_pixel(x + w - 1, row, color);
         }
     }
-    esp_lcd_rgb_qemu_refresh(s_panel);
+    lcd_present();
 }
 
 static void lcd_draw_line(int x0, int y0, int x1, int y1, uint16_t color)
@@ -293,7 +307,7 @@ static void lcd_draw_line(int x0, int y0, int x1, int y1, uint16_t color)
             y0 += sy;
         }
     }
-    esp_lcd_rgb_qemu_refresh(s_panel);
+    lcd_present();
 }
 
 static void lcd_draw_circle(int cx, int cy, int r, uint16_t color,
@@ -328,39 +342,35 @@ static void lcd_draw_circle(int cx, int cy, int r, uint16_t color,
             d += 2 * (x - y) + 1;
         }
     }
-    esp_lcd_rgb_qemu_refresh(s_panel);
+    lcd_present();
 }
 
 /* -------------------- LCD initialization -------------------- */
 
 int claw_lcd_init(void)
 {
-    esp_lcd_rgb_qemu_config_t cfg = {
-        .width = LCD_WIDTH,
-        .height = LCD_HEIGHT,
-        .bpp = RGB_QEMU_BPP_16,
-    };
+    CLAW_LOGI(TAG, "claw_lcd_init enter");
 
-    esp_err_t err = esp_lcd_new_rgb_qemu(&cfg, &s_panel);
-    if (err != ESP_OK) {
-        CLAW_LOGW(TAG, "QEMU LCD not available (real hardware?)");
+    if (st7789_init() != 0) {
+        CLAW_LOGW(TAG, "ST7789 init failed");
         return CLAW_ERROR;
     }
 
-    esp_lcd_panel_reset(s_panel);
-    esp_lcd_panel_init(s_panel);
+    if (!s_fb) {
+        s_fb = calloc(LCD_WIDTH * LCD_HEIGHT, sizeof(uint16_t));
+        CLAW_LOGI(TAG, "lcd fb=%p", s_fb);
+        if (!s_fb) {
+            CLAW_LOGW(TAG, "LCD framebuffer alloc failed");
+            return CLAW_ERROR;
+        }
+    }
 
-    void *fb = NULL;
-    esp_lcd_rgb_qemu_get_frame_buffer(s_panel, &fb);
-    s_fb = (uint16_t *)fb;
+    memset(s_fb, 0, LCD_WIDTH * LCD_HEIGHT * sizeof(uint16_t));
+    s_lcd_active = 0;
+
+    lcd_present();
 
     CLAW_LOGI(TAG, "LCD initialized (%dx%d RGB565)", LCD_WIDTH, LCD_HEIGHT);
-
-    /*
-     * Skip initial fill and text drawing at boot — QEMU MMIO writes
-     * are extremely slow (>10min for 320x240 fill). LCD tools still
-     * work on demand after boot completes.
-     */
     return CLAW_OK;
 }
 
@@ -570,6 +580,7 @@ static const char schema_lcd_circle[] =
 
 int claw_lcd_available(void)
 {
+    CLAW_LOGI(TAG, "claw_lcd_available=%d fb=%p", s_fb != NULL, s_fb);
     return (s_fb != NULL) ? 1 : 0;
 }
 
